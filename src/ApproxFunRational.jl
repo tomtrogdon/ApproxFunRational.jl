@@ -1,12 +1,69 @@
 module ApproxFunRational
-using Base, LinearAlgebra, Reexport, AbstractFFTs, FFTW, InfiniteArrays, FillArrays, FastTransforms, IntervalSets,
-            DomainSets, SpecialFunctions
+using Base, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAlgebra#, Reexport, AbstractFFTs, FFTW, InfiniteArrays, FillArrays, FastTransforms, IntervalSets,
+            #DomainSets, SpecialFunctions
 
 @reexport using ApproxFunBase
 
-import ApproxFunFourier: PeriodicDomain, PeriodicLine, Circle
+#import ApproxFunBase: Fun, AbstractTransformPlan, TransformPlan, ITransformPlan, ConcreteDerivative, ConcreteMultiplication, prectype, spacescompatible
 
-export OscLaurent, ic_s!, c_s!, mobiusdiff, zai, cai#, spacescompatible
+import ApproxFunBase: normalize!, flipsign, FiniteRange, Fun, MatrixFun, UnsetSpace, VFun, RowVector,
+                UnivariateSpace, AmbiguousSpace, SumSpace, SubSpace, WeightSpace, NoSpace, Space,
+                HeavisideSpace, PointSpace,
+                IntervalOrSegment, RaggedMatrix, AlmostBandedMatrix,
+                AnyDomain, ZeroSpace, ArraySpace, TrivialInterlacer, BlockInterlacer,
+                AbstractTransformPlan, TransformPlan, ITransformPlan,
+                ConcreteConversion, ConcreteMultiplication, ConcreteDerivative, ConcreteIntegral, CalculusOperator,
+                ConcreteVolterra, Volterra, VolterraWrapper,
+                MultiplicationWrapper, ConversionWrapper, DerivativeWrapper, Evaluation, EvaluationWrapper,
+                Conversion, defaultConversion, defaultcoefficients, default_Fun, Multiplication, Derivative, Integral, bandwidths,
+                ConcreteEvaluation, ConcreteDefiniteLineIntegral, ConcreteDefiniteIntegral, ConcreteIntegral,
+                DefiniteLineIntegral, DefiniteIntegral, ConcreteDefiniteIntegral, ConcreteDefiniteLineIntegral, IntegralWrapper,
+                ReverseOrientation, ReverseOrientationWrapper, ReverseWrapper, Reverse, NegateEven,
+                Dirichlet, ConcreteDirichlet, DirichletWrapper,
+                TridiagonalOperator, SubOperator, Space, @containsconstants, spacescompatible,
+                hasfasttransform, canonicalspace, domain, setdomain, prectype, domainscompatible,
+                plan_transform, plan_itransform, plan_transform!, plan_itransform!, transform, itransform, hasfasttransform,
+                CanonicalTransformPlan, ICanonicalTransformPlan,
+                Integral,
+                domainspace, rangespace, boundary,
+                union_rule, conversion_rule, maxspace_rule, conversion_type, maxspace, hasconversion, points,
+                rdirichlet, ldirichlet, lneumann, rneumann, ivp, bvp,
+                linesum, differentiate, integrate, linebilinearform, bilinearform,
+                UnsetNumber, coefficienttimes, subspace_coefficients, sumspacecoefficients, specialfunctionnormalizationpoint,
+                Segment, IntervalOrSegmentDomain, PiecewiseSegment, isambiguous, Vec, eps, isperiodic,
+                arclength, complexlength,
+                invfromcanonicalD, fromcanonical, tocanonical, fromcanonicalD, tocanonicalD, canonicaldomain, setcanonicaldomain, mappoint,
+                reverseorientation, checkpoints, evaluate, mul_coefficients, coefficients, coefficientmatrix, isconvertible,
+                clenshaw, ClenshawPlan, sineshaw,
+                toeplitz_getindex, toeplitz_axpy!, sym_toeplitz_axpy!, hankel_axpy!, ToeplitzOperator, SymToeplitzOperator, hankel_getindex,
+                SpaceOperator, ZeroOperator, InterlaceOperator,
+                interlace!, reverseeven!, negateeven!, cfstype, pad!, alternatesign!, mobius,
+                extremal_args, hesseneigvals, chebyshev_clenshaw, recA, recB, recC, roots,splitatroots,
+                chebmult_getindex, intpow, alternatingsum,
+                domaintype, diagindshift, rangetype, weight, isapproxinteger, default_Dirichlet, scal!, dotu,
+                components, promoterangespace, promotedomainspace, choosedomainspace,
+                block, blockstart, blockstop, blocklengths, isblockbanded, pointscompatible,
+                AbstractProductSpace, MultivariateFun, BivariateSpace,
+                @wrapperstructure, @wrapperspaces, @wrapper, @calculus_operator, resizedata!, slnorm, affine_setdiff,
+                complexroots
+import ApproxFunFourier: PeriodicDomain, PeriodicLine, Circle
+import FFTW: plan_r2r!, fftwNumber, REDFT10, REDFT01, REDFT00, RODFT00, R2HC, HC2R,
+                r2r!, r2r,  plan_fft, plan_ifft, plan_ifft!, plan_fft!, cFFTWPlan
+import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, !=, eltype, iterate,
+                                >=, /, ^, \, ∪, transpose, size, tail, broadcast, broadcast!, copyto!, copy, to_index, (:),
+                                similar, map, vcat, hcat, hvcat, show, summary, stride, sum, cumsum, sign, imag, conj, inv,
+                                complex, reverse, exp, sqrt, abs, abs2, sign, issubset, values, in, first, last, rand, intersect, setdiff,
+                                isless, union, angle, join, isnan, isapprox, isempty, sort, merge, promote_rule,
+                                minimum, maximum, extrema, argmax, argmin, findmax, findmin, isfinite,
+                                zeros, zero, one, promote_rule, repeat, length, resize!, isinf,
+                                getproperty, findfirst, unsafe_getindex, fld, cld, div, real, imag,
+                                @_inline_meta, eachindex, firstindex, lastindex, keys, isreal, OneTo,
+                                Array, Vector, Matrix, view, ones, @propagate_inbounds, print_array,
+                                split
+
+
+
+export PeriodicLine, OscLaurent, ic_s!, c_s!, mobiusdiff, zai, cai#, spacescompatible
 #include("Domains/Domains.jl")
 
 struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
@@ -52,7 +109,7 @@ end
 plan_mifft!(x::AbstractVector{T}) where T = plan_mifft!(plan_ifft!(x))
 
 function *(tr::plan_mifft!,x::AbstractVector{T}) where T
-    ic_s(x)
+    ic_s!(x)
     return tr.P*x
 end
 
@@ -108,7 +165,7 @@ itransform(sp::OscLaurent{D,R},cfs::AbstractVector) where {D,R} = plan_itransfor
 
 include("utils.jl")
 include("calculus.jl")
-include("Operators.jl")
+include("operators.jl")
 
 
 

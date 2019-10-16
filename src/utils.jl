@@ -6,23 +6,23 @@ function zai(f)
     return x -> isnan(x) ? 0.0im : complex(f(x))
 end
 
-
 function horner(c::AbstractVector,kr::AbstractRange{Int},x)
     T = promote_type(eltype(c),eltype(x))
+    ic_s!(c)
     if isempty(c)
         return zero(x)
     end
-
     ret = zero(T)
     @inbounds for k in reverse(kr)
         ret = muladd(x,ret,c[k])
     end
-
+    c_s!(c)
     ret
 end
 
 function horner(c::AbstractVector,kr::AbstractRange{Int},x::AbstractVector)
     n,T = length(x),promote_type(eltype(c),eltype(x))
+    ic_s!(c)
     if isempty(c)
         return zero(x)
     end
@@ -34,7 +34,7 @@ function horner(c::AbstractVector,kr::AbstractRange{Int},x::AbstractVector)
             ret[i] = muladd(x[i],ret[i],ck)
         end
     end
-
+    c_s!(c)
     ret
 end
 
