@@ -14,7 +14,7 @@ using Test
     @test F(.1) ≈ f(.1)*exp(β*im*.1)
     H = F*G
     @test H(.1) ≈ F(.1)*G(.1)
-    sum(H) ≈ sqrt(pi)
-    sum(G) ≈ pi*sech(1.0*pi)
-    sum(F) ≈ exp(-3/4 + im)*sqrt(pi)
+    @test sum(H) ≈ sqrt(pi)
+    @test sum(G) ≈ pi*sech(1.0*pi)
+    @test sum(F) ≈ exp(-3/4 + im)*sqrt(pi)
 end
