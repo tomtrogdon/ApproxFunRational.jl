@@ -89,8 +89,8 @@ function fsum(x::AbstractVector{T}) where T
     x[1] + sum(x[2:2:end].*((-1)^j for j in 1:length(x[2:2:end]))) + sum(x[3:2:end].*((-1)^j for j in 1:length(x[3:2:end])))
 end
 
-c_s!(x) = x[1] = fsum(x) # normalize
-ic_s!(x) = x[1] = x[1] - (fsum(x)-x[1])
+c_s!(x) = 1# do nothing %x[1] = fsum(x) # normalize
+ic_s!(x) = 1# do nothing x[1] = x[1] - (fsum(x)-x[1])
 
 struct plan_mfft!
     P

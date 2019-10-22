@@ -1,4 +1,4 @@
-differentiate(f::Fun{OscLaurent{DD,RR}}) where {DD,RR} = Fun(f.space,1/(domain(f.space).L)*mobiusdiff(f.coefficients))
+differentiate(f::Fun{OscLaurent{DD,RR}}) where {DD,RR} = (f.space.exp ≈ 0.0) ?  Fun(f.space,1/(domain(f.space).L)*mobiusdiff(f.coefficients)) : Fun(f.space,vcat(1.0im*f.space.exp*f.coefficients,[0.0,0.0]) + 1/(domain(f.space).L)*mobiusdiff(f.coefficients))
 
 
 function Lag(n::Int64,x::Float64) # evaluate Laguerre polynomials at x, α = 1

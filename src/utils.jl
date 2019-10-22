@@ -58,29 +58,29 @@ function mobiusdiff(v::AbstractVector{T}) where T<:Number #need to fix
         w[1] = zero(T)
         n = length(v)
         k = 1 #just for clarity
-        @inbounds w[3] = 1.0im*k*v[3] - 1.0im*(k+1)/2*v[5]
-        @inbounds w[2] = -1.0im*k*v[2] + 1.0im*(k+1)/2*v[4]
+        @inbounds w[3] = 1.0im*k*v[3] + 0.5im*(k+1)*v[5]
+        @inbounds w[2] = -1.0im*k*v[2] - 0.5im*(k+1)*v[4]
         l = (isodd(n) ? n÷2 : n÷2-1)
         for k=2:l-1
-            @inbounds w[2k] = -1.0im*k*v[2k] + 1.0im*(k+1)/2*v[2k+2] + 1.0im*(k-1)/2*v[2k-2]
-            @inbounds w[2k+1] = 1.0im*k*v[2k+1] - 1.0im*(k+1)/2*v[2k+3] - 1.0im*(k-1)/2*v[2k-1]
+            @inbounds w[2k] = -1.0im*k*v[2k] - 0.5im*(k+1)*v[2k+2] - 0.5im*(k-1)*v[2k-2]
+            @inbounds w[2k+1] = 1.0im*k*v[2k+1] + 0.5im*(k+1)*v[2k+3] + 0.5im*(k-1)*v[2k-1]
         end
         #### Deal with large n case
         if iseven(n) # if n is even, then l = n/2 -1, n = 2l + 2
-            # negative modes
-            @inbounds w[2l] = -1.0im*l*v[2l] + 1.0im*(l+1)/2*v[2l+2] + 1.0im*(l-1)/2*v[2l-2]
-            @inbounds w[2l+2] = -1.0im*(l+1)*v[2l+2] + 1.0im*(l)/2*v[2l]
-            @inbounds w[2l+4] = 1.0im*(l+1)/2*v[2l+2] # index -(n/2+2)
             # positive modes
-            @inbounds w[2l+1] = 1.0im*l*v[2l+1] - 1.0im*(l-1)/2*v[2l-1]
-            @inbounds w[2l+3] = -1.0im*(l)/2*v[2l+1] # index n/2
+            @inbounds w[2l] = -1.0im*l*v[2l] - 0.5im*(l+1)*v[2l+2] - 0.5im*(l-1)*v[2l-2]
+            @inbounds w[2l+2] = -1.0im*(l+1)*v[2l+2] - 0.5im*(l)*v[2l]
+            @inbounds w[2l+4] = -0.5im*(l+1)*v[2l+2] # index -(n/2+2)
+            # negative modes
+            @inbounds w[2l+1] = 1.0im*l*v[2l+1] + 0.5im*(l-1)*v[2l-1]
+            @inbounds w[2l+3] = 0.5im*(l)*v[2l+1] # index n/2
         else # if n is odd, then things are symmetric
-            @inbounds w[2l+1] = 1.0im*l*v[2l+1] - 1.0im*(l-1)/2*v[2l-1]
-            @inbounds w[2l+3] = - 1.0im*(l)/2*v[2l+1]
-            @inbounds w[2l] = -1.0im*l*v[2l] + 1.0im*(l-1)/2*v[2l-2]
-            @inbounds w[2l+2] = 1.0im*(l)/2*v[2l]
+            @inbounds w[2l+1] = 1.0im*l*v[2l+1] + 0.5im*(l-1)*v[2l-1]
+            @inbounds w[2l+3] = 0.5im*(l)*v[2l+1]
+            @inbounds w[2l] = -1.0im*l*v[2l] - 0.5im*(l-1)*v[2l-2]
+            @inbounds w[2l+2] = -0.5im*(l)*v[2l]
         end
-        w[1] = -sum(w) # needed for the evaulate() function to work
+        w[1] = -fsum(w) # needed because fsum(w) = 0 is needed to enforce decay at infinity
         w
     end
 end

@@ -6,8 +6,8 @@ bandwidths(D::ConcreteDerivative{OscLaurent{DD,RR}})  where {DD,RR} = (3,3)
 rangespace(D::ConcreteDerivative{S}) where {S<:OscLaurent}=D.space
 function mob_derivative_getindex(d::PeriodicLine,m,j::Integer,k::Integer)
     # j is the row index, i.e. (j,k) not (k,j) as other ApproxFun implementations
-    if j == 1
-        0.0im
+    if j == 1 && 2 <= k <= 3
+        -(-1)^k*0.5im/d.L
     elseif iseven(j)
         l = j÷2
         if k == j
@@ -51,7 +51,7 @@ function osc_laurent_getindex(v::AbstractVector{T},k::Integer,j::Integer) where 
     if j-k == 0
         nonnegative[1] - c - b
     elseif l == 1 && p > 1
-        zero(T) - b 
+        zero(T) - b
     elseif 0<k-j≤length(negative)
         negative[k-j] - b
     elseif 0<j-k≤length(nonnegative)-1
@@ -78,8 +78,8 @@ end
 rangespace(T::ConcreteMultiplication{OscLaurent{DD,RR},OscLaurent{DD,RR}}) where {DD,RR} = OscLaurent(domainspace(T).domain,T.space.exp + space(T.f).exp)
 function getindex(T::ConcreteMultiplication{OscLaurent{DD,RR},OscLaurent{DD,RR}},k::Integer,j::Integer) where {DD,RR}
     isempty(T.f.coefficients) && return zero(eltype(T))
-    #laurent_getindex(T.f.coefficients[3:2:end],T.f.coefficients[[1;2:2:end]],k,j)
-    osc_laurent_getindex(T.f.coefficients,k,j)
+    laurent_getindex(T.f.coefficients[3:2:end],T.f.coefficients[[1;2:2:end]],k,j)
+    #osc_laurent_getindex(T.f.coefficients,k,j)
 end
 
 function bandwidths(T::ConcreteMultiplication{OscLaurent{DD,RR},OscLaurent{DD,RR}}) where {DD,RR}
