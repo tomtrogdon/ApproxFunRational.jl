@@ -12,7 +12,7 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 
 [compat]
 julia = "1"
-FFTW = "1"
+FFTW = "0.3, 1"
 ApproxFunBase = ">=0.2"
 ApproxFunFourier = "0.1"
 Reexport = "0.2"
