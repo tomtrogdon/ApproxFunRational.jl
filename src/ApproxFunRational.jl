@@ -1,5 +1,5 @@
 module ApproxFunRational
-using Base, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAlgebra#, Reexport, AbstractFFTs, FFTW, InfiniteArrays, FillArrays, FastTransforms, IntervalSets,
+using Base, ApproxFun, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAlgebra#, Reexport, AbstractFFTs, FFTW, InfiniteArrays, FillArrays, FastTransforms, IntervalSets,
             #DomainSets, SpecialFunctions
 
 @reexport using ApproxFunBase
@@ -63,7 +63,7 @@ import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, 
 
 
 
-export PeriodicLine, OscLaurent, ic_s!, c_s!, mobiusdiff, zai, cai#, spacescompatible
+export PeriodicLine, OscLaurent, zai, cai, CauchyPNO, CauchyP, CauchyM#, spacescompatible
 #include("Domains/Domains.jl")
 
 struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
@@ -166,11 +166,10 @@ itransform(sp::OscLaurent{D,R},cfs::AbstractVector) where {D,R} = plan_itransfor
 include("utils.jl")
 include("calculus.jl")
 include("operators.jl")
+include("cauchy.jl")
 
 function Base.conj(sp::OscLaurent{DD,RR}) where {DD,RR}
-    out = copy(sp)
-    out.exp = -out.exp
-    out
+    OscLaurent(domain(sp),-sp.exp)
 end
 
 
