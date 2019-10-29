@@ -84,3 +84,15 @@ function mobiusdiff(v::AbstractVector{T}) where T<:Number #need to fix
         w
     end
 end
+
+function mob_conj(x::AbstractVector{T}) where T <: Number
+    y = x
+    if isodd(length(x))
+        y[2:2:end] = conj(x[3:2:end])
+        y[3:2:end] = conj(x[2:2:end])
+    else  # This is not the exact conjugate!
+        y[2:2:end-1] = conj(x[3:2:end-1])
+        y[3:2:end-1] = conj(x[2:2:end-1])
+    end
+
+end

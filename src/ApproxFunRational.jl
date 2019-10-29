@@ -167,7 +167,26 @@ include("utils.jl")
 include("calculus.jl")
 include("operators.jl")
 
+function Base.conj(sp::OscLaurent{DD,RR}) where {DD,RR}
+    out = copy(sp)
+    out.exp = -out.exp
+    out
+end
 
 
+function Base.conj(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}  ## Almost the same as Laurent
+    ncoefficients(f) == 0 && return f
+
+    cfs = Array{cfstype(f)}(undef, iseven(ncoefficients(f)) ? ncoefficients(f)+1 : ncoefficients(f))
+    cfs[1] = conj(f.coefficients[1])
+    cfs[ncoefficients(f)] = 0
+    for k=2:2:ncoefficients(f)-1
+        cfs[k] = conj(f.coefficients[k+1])
+    end
+    for k=3:2:ncoefficients(f)+1
+        cfs[k] = conj(f.coefficients[k-1])
+    end
+    Fun(conj(space(f)),cfs)
+end
 
 end #module
