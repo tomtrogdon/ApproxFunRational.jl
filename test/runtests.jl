@@ -37,6 +37,9 @@ end
     L = 1.; α = -2.; β = 2.;
     dom = PeriodicLine{false,Float64}(0.,L)
     g = z -> sech(z)
+    G = Fun(zai(g), sp)
+    @test G(.1) ≈ g(.1)*exp(α*im*.1) #test adaptivity
+
     f = z -> exp(-z^2+z)
     G = Fun(zai(g), OscLaurent(dom,α), 200)
     @test G(.1) ≈ g(.1)*exp(α*im*.1)

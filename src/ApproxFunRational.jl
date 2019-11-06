@@ -77,6 +77,12 @@ OscLaurent(d::PeriodicLine,exp::Float64) = OscLaurent{typeof(d),complex(prectype
 OscLaurent(d::PeriodicLine) = OscLaurent(d,0.)
 OscLaurent() = OscLaurent(PeriodicLine())
 
+# need to overload for adaptivity
+function Fun(f::Function,sp::OscLaurent{D,R}) where {D,R}
+    g = Fun(f,Laurent(sp.domain))
+    return Fun(sp,g.coefficients)
+end
+
 spacescompatible(a::OscLaurent{D,R},b::OscLaurent{D,R}) where {D,R} = a.exp == b.exp
 
 fourierpoints(n::Integer) = fourierpoints(Float64,n)
