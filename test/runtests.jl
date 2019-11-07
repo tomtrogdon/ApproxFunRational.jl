@@ -9,14 +9,16 @@ using Test
     h = z -> 1.0 + 1/(z^2+1)
     F = z -> [cai(h,1.0)(z) zai(g)(z); zai(f)(z) cai(h,1.0)(z)]
     G = z -> [zai(g)(z), zai(f)(z)]
-    H = z -> [cai(h,1.0)(z)*zai(g)(z)+zai(f)(z)*zai(f)(z), zai(g)(z)*zai(g)(z)+cai(h,1.0)(z)*zai(f)(z)]
     FF = Fun(F,OscLaurent(0.0))
     GG = Fun(G,OscLaurent(0.0))
     J = z -> [zai(g)(z)^2 + zai(f)(z)^2]
     JJ = transpose(GG)*GG
     HH = FF*GG
     @test JJ(.1) ≈ J(.1)
-    HH(.1) ≈ H(.1)
+    @test HH(.1) ≈ F(.1)*G(.1)
+    FF = Fun(F,OscLaurent(β))
+    GG = Fun(G,OscLaurent(0.0)) + Fun(G,OscLaurent(α))
+    @test (FF*GG)(.1) ≈ F(.1)*G(.1)*exp(1im*β*(.1)) + F(.1)*G(.1)*exp(1im*(α+β)*(.1))
 end
 
 @testset "ApproxFunRational.jl: Vector-valued functions" begin

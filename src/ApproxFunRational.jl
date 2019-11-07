@@ -85,6 +85,18 @@ function *(f::Fun{OscLaurent{D,R}},g::Fun{OscLaurent{D,R}})  where {D,R}
     Fun(sp,ApproxFun.transform(sp,values(pad(f,m)).*values(pad(g,m))))
 end
 
+function *(A::Array{T,2},b::Array{S,1})  where {T<:Fun,S<:Fun}
+    c = [];
+    for i = 1:size(A)[1]
+        sum = A[i,1]*b[1]
+        for j = 2:size(A)[2]
+            sum = sum + A[i,j]*b[j]
+        end
+        append!(c,[sum])
+    end
+    c
+end
+
 ## A hack, definitely
 ## There is an issue because if F = Fun(f,OscLaurent(α)) then F != f, typically
 ## If checkpoints could depend on space and domain, this could be fixed easily
