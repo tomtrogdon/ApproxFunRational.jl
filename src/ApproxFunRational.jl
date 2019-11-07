@@ -63,7 +63,7 @@ import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, 
 
 
 
-export PeriodicLine, OscLaurent, zai, cai, CauchyPNO, CauchyP, CauchyM#, spacescompatible
+export PeriodicLine, OscLaurent, zai, cai, Cauchy, CauchyP, CauchyM, ⋅#, spacescompatible
 #include("Domains/Domains.jl")
 
 struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
@@ -105,6 +105,11 @@ function Fun(f::Function,sp::OscLaurent{D,R}) where {D,R}
     n = length(g.coefficients)
     n = round(Int64,n/length(g(points(g)[1])))+1
     return Fun(f,sp,n)
+end
+
+## Inner product for vectors.  Could extend to matrices using trace.
+function ⋅(f::Fun{T},g::Fun{S}) where {S<:ApproxFun.ArraySpace{Q,1},T<:ApproxFun.ArraySpace{J,1}} where {Q,J}
+    sum(transpose(conj(f))*g)[1]
 end
 
 spacescompatible(a::OscLaurent{D,R},b::OscLaurent{D,R}) where {D,R} = a.exp == b.exp

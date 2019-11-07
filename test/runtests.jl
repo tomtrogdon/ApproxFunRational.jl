@@ -1,6 +1,8 @@
 using ApproxFunRational, ApproxFunFourier, ApproxFunBase, ApproxFun
 using Test
 
+## TODO: test inner product
+
 @testset "ApproxFunRational.jl: Matrix-vector function product" begin
     L = 1.; α = -2.; β = 2.;
     dom = PeriodicLine{false,Float64}(0.,L)
@@ -107,8 +109,6 @@ end
     Fbar = conj(F)
     @test Fbar(.1) ≈ conj(F(.1))
 end
-
-11
 
 @testset "ApproxFunRational.jl: Differentiation and integration" begin
     L = 1.; α = -2.; β = 2.;

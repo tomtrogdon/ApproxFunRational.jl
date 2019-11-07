@@ -84,7 +84,7 @@ function CauchyMNO(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}# returns the non-osc
     sp = OscLaurent(domain(space(f)),0.)
     if α == 0.
       b = -copy(f.coefficients)
-      b[[1;3:2:end]] = zeros(typeof(f.coefficients[1]),length(b[[1;2:2:end]])) # zero positive
+      b[[1;3:2:end]] = zeros(typeof(f.coefficients[1]),length(b[[1;3:2:end]])) # zero positive
       b[1] = -fsum(b)
       return Fun(sp,b)
     elseif α < 0.
@@ -99,3 +99,22 @@ function CauchyMNO(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}# returns the non-osc
       return Fun(sp,ApproxFun.transform(sp,Res(α,domain(space(f)).L,points(f),f.coefficients[2:2:end])))
     end
 end
+
+for cauchy in (:CauchyP,:CauchyM)
+  @eval begin
+    function $cauchy(f::Fun{T}) where {T<:SumSpace}
+      n = length(f.space.spaces)
+      out = $cauchy(component(f,1))
+      for i = 2:n
+        out = out + $cauchy(component(f,2))
+      end
+      out
+    end
+
+    function $cauchy(f::Fun{T}) where {T<:ApproxFun.ArraySpace{J,1}} where {J}
+      Fun(map($cauchy,Array(f)))
+    end
+  end
+end
+
+Cauchy(σ,f) = σ == 1 ? CauchyP(f) : CauchyM(f)
