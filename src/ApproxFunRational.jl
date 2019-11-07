@@ -79,6 +79,11 @@ OscLaurent(α::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,1.),α)
 OscLaurent(α::Float64,L::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,L),α)
 OscLaurent() = OscLaurent(PeriodicLine())
 
+function *(f::Fun{OscLaurent{D,R}},g::Fun{OscLaurent{D,R}})  where {D,R}
+    sp = OscLaurent(f.space.domain,f.space.exp+g.space.exp)
+    m = maximum([length(f.coefficients),length(g.coefficients)])
+    Fun(sp,ApproxFun.transform(sp,values(pad(f,m)).*values(pad(g,m))))
+end
 
 ## A hack, definitely
 ## There is an issue because if F = Fun(f,OscLaurent(α)) then F != f, typically

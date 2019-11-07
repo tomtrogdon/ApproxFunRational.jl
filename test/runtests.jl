@@ -1,6 +1,23 @@
-using ApproxFunRational, ApproxFunFourier, ApproxFunBase
+using ApproxFunRational, ApproxFunFourier, ApproxFunBase, ApproxFun
 using Test
 
+@testset "ApproxFunRational.jl: Matrix-vector function product" begin
+    L = 1.; α = -2.; β = 2.;
+    dom = PeriodicLine{false,Float64}(0.,L)
+    g = z -> sech(z)
+    f = z -> exp(-z^2+z)
+    h = z -> 1.0 + 1/(z^2+1)
+    F = z -> [cai(h,1.0)(z) zai(g)(z); zai(f)(z) cai(h,1.0)(z)]
+    G = z -> [zai(g)(z), zai(f)(z)]
+    H = z -> [cai(h,1.0)(z)*zai(g)(z)+zai(f)(z)*zai(f)(z), zai(g)(z)*zai(g)(z)+cai(h,1.0)(z)*zai(f)(z)]
+    FF = Fun(F,OscLaurent(0.0))
+    GG = Fun(G,OscLaurent(0.0))
+    J = z -> [zai(g)(z)^2 + zai(f)(z)^2]
+    JJ = transpose(GG)*GG
+    HH = FF*GG
+    @test JJ(.1) ≈ J(.1)
+    HH(.1) ≈ H(.1)
+end
 
 @testset "ApproxFunRational.jl: Vector-valued functions" begin
     L = 1.; α = -2.; β = 2.;
@@ -11,10 +28,7 @@ using Test
     F = z-> [zai(g)(z), zai(f)(z), cai(h,1.0)(z)]
     FF = Fun(F,OscLaurent(α))
     @test F(.1)*exp(1im*α*(.1)) ≈ FF(.1)
-
 end
-
-ct(f::Fun) = conj(transpose(f))
 
 @testset "ApproxFunRational.jl: Oscillatory Cauchy integrals" begin
     L = 1.; α = -2.;
@@ -52,7 +66,8 @@ end
     L = 1.; α = -2.; β = 2.;
     dom = PeriodicLine{false,Float64}(0.,L)
     g = z -> sech(z)
-    G = Fun(zai(g), OscLaurent(dom))
+    G = Fun(zai(g), OscLaurent(dom,α))
+    println(length(G.coefficients))
     @test G(.1) ≈ g(.1)*exp(α*im*.1) #test adaptivity
 
     f = z -> exp(-z^2+z)
@@ -67,7 +82,7 @@ end
     dom = PeriodicLine{false,Float64}(0.,L)
     g = z -> sech(z)
     f = z -> exp(-z^2+z)
-    G = Fun(zai(g), OscLaurent(dom,α), 200)
+    G = Fun(zai(g), OscLaurent(dom,α), 500)
     @test G(.1) ≈ g(.1)*exp(α*im*.1)
     F = Fun(zai(f), OscLaurent(dom,β), 200)
     @test F(.1) ≈ f(.1)*exp(β*im*.1)
@@ -91,6 +106,8 @@ end
     @test Fbar(.1) ≈ conj(F(.1))
 end
 
+11
+
 @testset "ApproxFunRational.jl: Differentiation and integration" begin
     L = 1.; α = -2.; β = 2.;
     dom = PeriodicLine{false,Float64}(0.,L)
@@ -113,7 +130,7 @@ end
     g = z -> sech(z)
     f = z -> exp(-z^2+z)
     df = z-> (1-2z)*exp(-z^2+z)
-    G = Fun(zai(g), OscLaurent(dom,α), 200)
+    G = Fun(zai(g), OscLaurent(dom,α), 400)
     F = Fun(zai(f), OscLaurent(dom,β), 200)
     H = F*G
     dF = F'

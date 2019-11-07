@@ -12,6 +12,8 @@ function Lag(n::Int64,x::Float64) # evaluate Laguerre polynomials at x, α = 1
   return c
 end
 
+Base.sum(f::Fun{T}) where T <: ArraySpace = map(sum,f)
+
 function Base.sum(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
     if space(f).exp == 0.
         data = f.coefficients[2:2:end]
