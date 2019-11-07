@@ -1,23 +1,20 @@
 using ApproxFunRational, ApproxFunFourier, ApproxFunBase
 using Test
 
-L = 1.; α = -2.; β = 2.;
-dom = PeriodicLine{false,Float64}(0.,L)
-g = z -> sech(z)
-f = z -> exp(-z^2+z)
-F = z-> [zai(g)(z), zai(g)(z), zai(g)(z)]
-F(.1)
-G = zai(g)
 
+@testset "ApproxFunRational.jl: Vector-valued functions" begin
+    L = 1.; α = -2.; β = 2.;
+    dom = PeriodicLine{false,Float64}(0.,L)
+    g = z -> sech(z)
+    f = z -> exp(-z^2+z)
+    h = z -> 1.0 + 1/(z^2+1)
+    F = z-> [zai(g)(z), zai(f)(z), cai(h,1.0)(z)]
+    FF = Fun(F,OscLaurent(α))
+    @test F(.1)*exp(1im*α*(.1)) ≈ FF(.1)
 
-FF = Fun(F,Laurent(dom))
-FF.coefficients
+end
 
-FFo = Fun(F,OscLaurent(1.))
-FFo.coefficients
-
-FFL = Fun(F,Laurent())
-FFL(.1)
+ct(f::Fun) = conj(transpose(f))
 
 @testset "ApproxFunRational.jl: Oscillatory Cauchy integrals" begin
     L = 1.; α = -2.;
@@ -55,7 +52,7 @@ end
     L = 1.; α = -2.; β = 2.;
     dom = PeriodicLine{false,Float64}(0.,L)
     g = z -> sech(z)
-    G = Fun(zai(g), OscLaurent(dom,α))
+    G = Fun(zai(g), OscLaurent(dom))
     @test G(.1) ≈ g(.1)*exp(α*im*.1) #test adaptivity
 
     f = z -> exp(-z^2+z)
