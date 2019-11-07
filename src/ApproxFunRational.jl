@@ -75,12 +75,19 @@ struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine
 end
 OscLaurent(d::PeriodicLine,exp::Float64) = OscLaurent{typeof(d),complex(prectype(d))}(d,exp)
 OscLaurent(d::PeriodicLine) = OscLaurent(d,0.)
+OscLaurent(α::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,1.),α)
+OscLaurent(α::Float64,L::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,L),α)
 OscLaurent() = OscLaurent(PeriodicLine())
 
-# need to overload for adaptivity
+
+## A hack, definitely
+## There is an issue because if F = Fun(f,OscLaurent(α)) then F != f, typically
+## If checkpoints could depend on space and domain, this could be fixed easily
 function Fun(f::Function,sp::OscLaurent{D,R}) where {D,R}
     g = Fun(f,Laurent(sp.domain))
-    return Fun(sp,g.coefficients)
+    n = length(g.coefficients)
+    n = round(Int64,n/length(g(points(g)[1])))+1
+    return Fun(f,sp,n)
 end
 
 spacescompatible(a::OscLaurent{D,R},b::OscLaurent{D,R}) where {D,R} = a.exp == b.exp

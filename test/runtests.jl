@@ -1,6 +1,24 @@
 using ApproxFunRational, ApproxFunFourier, ApproxFunBase
 using Test
 
+L = 1.; α = -2.; β = 2.;
+dom = PeriodicLine{false,Float64}(0.,L)
+g = z -> sech(z)
+f = z -> exp(-z^2+z)
+F = z-> [zai(g)(z), zai(g)(z), zai(g)(z)]
+F(.1)
+G = zai(g)
+
+
+FF = Fun(F,Laurent(dom))
+FF.coefficients
+
+FFo = Fun(F,OscLaurent(1.))
+FFo.coefficients
+
+FFL = Fun(F,Laurent())
+FFL(.1)
+
 @testset "ApproxFunRational.jl: Oscillatory Cauchy integrals" begin
     L = 1.; α = -2.;
     dom = PeriodicLine{false,Float64}(0.,L)
