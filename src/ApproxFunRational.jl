@@ -1,5 +1,5 @@
 module ApproxFunRational
-using Base, ApproxFun, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAlgebra#, Reexport, AbstractFFTs, FFTW, InfiniteArrays, FillArrays, FastTransforms, IntervalSets,
+using Base, ApproxFun, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAlgebra, ApproxFunOrthogonalPolynomials, ApproxFunRational#, Reexport, AbstractFFTs, FFTW, InfiniteArrays, FillArrays, FastTransforms, IntervalSets,
             #DomainSets, SpecialFunctions
 
 @reexport using ApproxFunBase
@@ -61,9 +61,10 @@ import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, 
                                 Array, Vector, Matrix, view, ones, @propagate_inbounds, print_array,
                                 split
 
+import ApproxFunOrthogonalPolynomials: Laguerre
 
 
-export PeriodicLine, OscLaurent, zai, cai, Cauchy, CauchyP, CauchyM, ⋅#, spacescompatible
+export PeriodicLine, OscLaurent, zai, cai, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform#, spacescompatible
 #include("Domains/Domains.jl")
 
 struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
