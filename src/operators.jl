@@ -70,22 +70,26 @@ function blockbandwidths(T::ConcreteMultiplication{OscLaurent{DD,RR},OscLaurent{
     (m,m)
 end
 
-function fouriertransform(f::Fun{T}) where T <: OscLaurent
-    α = f.space.exp
-    L = f.space.domain.L
-    sp1 = Laguerre(1.0,Ray(α,0.0,1/(2.0*L),true))
-    sp2 = Laguerre(1.0,Ray(α,π,1/(2.0*L),true))
-    c1 = f.coefficients[3:2:end]
-    c2 = f.coefficients[2:2:end]
-    c1 = c1.*[4*π*L*(-1)^(i+1) for i=1:length(c1)]
-    c2 = c2.*[4*π*L*(-1)^(i+1) for i=1:length(c2)]
-    Fun(LaguerreWeight(0.0,0.5,sp1),c1) + Fun(LaguerreWeight(0.0,0.5,sp2),c2)
-end
+# old code for testing
+#function fouriertransform(f::Fun{T}) where T <: OscLaurent
+#    α = f.space.exp
+#    L = f.space.domain.L
+#    sp1 = Laguerre(1.0,Ray(α,0.0,1/(2.0*L),true))
+#    sp2 = Laguerre(1.0,Ray(α,π,1/(2.0*L),true))
+#    c1 = f.coefficients[3:2:end]
+#    c2 = f.coefficients[2:2:end]
+#    c1 = c1.*[4*π*L*(-1)^(i+1) for i=1:length(c1)]
+#    c2 = c2.*[4*π*L*(-1)^(i+1) for i=1:length(c2)]
+#    Fun(LaguerreWeight(0.0,0.5,sp1),c1) + Fun(LaguerreWeight(0.0,0.5,sp2),c2)
+#end
 
 #Op class = FourierOperator
 #Op = FourierTransform
 #ConcOp = ConcreteFourierTransform
 #WrappOp = FourierTransformWrapper
+
+
+### Fourier transform
 
 abstract type FourierOperator{S,OT,T} <: Operator{T} end
 
@@ -95,6 +99,12 @@ struct ConcreteFourierTransform{S<:Space,OT,T} <: FourierTransform{S,OT,T}
     space::S
     sign::OT
 end
+
+struct ConcreteδFourierTransform{S<:Space,OT,T} <: FourierTransform{S,OT,T}
+    space::S
+    sign::OT
+end
+
 struct FourierTransformWrapper{BT<:Operator,S<:Space,OT,T} <: FourierTransform{S,OT,T}
     op::BT
     sign::OT
@@ -108,6 +118,8 @@ FourierTransform(sp::UnsetSpace,k) = ConcreteFourierTransform(sp,k)
 ConcreteFourierTransform(sp::Space) = ConcreteFourierTransform(sp,1.0)
 
 FourierTransform(sp::OscLaurent,k) = ConcreteFourierTransform(sp,k)
+FourierTransform(sp::OscLaurent) = ConcreteFourierTransform(sp,1.0)
+FourierTransform() = ConcreteFourierTransform(UnsetSpace(),1.0)
 # not needed yet
 function Base.convert(::Type{Operator{T}},D::ConcreteFourierTransform) where T
     if T==eltype(D)
@@ -135,7 +147,7 @@ ApproxFunBase.rangespace(D::ConcreteFourierTransform{UnsetSpace,OT,T}) where {OT
 ApproxFunBase.promotedomainspace(D::FourierTransform,sp::UnsetSpace) = D
 function ApproxFunBase.promotedomainspace(D::FourierTransform,sp::Space)
     if isambiguous(domain(sp))
-        Fouriertransform(typeof(sp)(domain(D)))
+        FourierTransform(typeof(sp)(domain(D)))
     else
         FourierTransform(sp)
     end
@@ -145,15 +157,19 @@ choosedomainspace(M::FourierOperator{UnsetSpace},sp::Space) =
     iswrapper(M) ? choosedomainspace(M.op,sp) : sp
 
 function rangespace(D::ConcreteFourierTransform{S,OT,T}) where {S<:OscLaurent,OT,T}
-    α = D.space.exp
-    L = D.space.domain.L
+    α = D.space.exp/abs(D.sign)
+    L = D.space.domain.L*abs(D.sign)
     sp1 = Laguerre(1.0,Ray(α,0.0,1/(2.0*L),true))
     sp2 = Laguerre(1.0,Ray(α,π,1/(2.0*L),true))
-    SumSpace(LaguerreWeight(0.0,0.5,sp1),LaguerreWeight(0.0,0.5,sp2))
+    if D.sign > 0.
+        SumSpace(LaguerreWeight(0.0,0.5,sp1),LaguerreWeight(0.0,0.5,sp2))
+    else
+        SumSpace(LaguerreWeight(0.0,0.5,sp2),LaguerreWeight(0.0,0.5,sp1))
+    end
 end
 
 function osclaurent_ft_getindex(k::Integer,j::Integer,L::Float64,T::Type)
-    if j != k - 1
+    if j != k + 1
         return zero(T)
     else
         # switch to double-infinite indices
@@ -164,4 +180,85 @@ function osclaurent_ft_getindex(k::Integer,j::Integer,L::Float64,T::Type)
 end
 
 getindex(D::ConcreteFourierTransform{OscLaurent{DD,RR},OT,T},k::Integer,j::Integer) where {DD,RR,OT,T} = osclaurent_ft_getindex(k,j,D.space.domain.L,T)
-bandwidths(D::ConcreteFourierTransform{OscLaurent{DD,RR},OT,T}) where {DD,RR,OT,T} = (0,1)
+bandwidths(D::ConcreteFourierTransform{OscLaurent{DD,RR},OT,T}) where {DD,RR,OT,T} = 0,1
+#blockbandwidths(D::ConcreteFourierTransform{OscLaurent{DD,RR},OT,T}) where {DD,RR,OT,T} = ((0,∞),(0,1))
+### Cauchy transform
+
+abstract type SingularIntegralOperator{S,OT,T} <: Operator{T} end
+
+abstract type CauchyTransform{S,OT,T} <: SingularIntegralOperator{S,OT,T} end
+
+struct ConcreteFourierTransform{S<:Space,T} <: FourierTransform{S,OT,T}
+    space::S
+end
+struct FourierTransformWrapper{BT<:Operator,S<:Space,T} <: FourierTransform{S,OT,T}
+    op::BT
+end
+
+@wrapper CauchyTransformWrapper
+
+ConcreteCauchyTransform(sp::Space) = ConcreteCauchyTransform{typeof(sp),prectype(sp)}(sp)
+
+CauchyTransform(sp::UnsetSpace) = ConcreteCauchyTransform(sp)
+ConcreteCauchyTransform(sp::Space) = ConcreteFourierTransform(sp)
+
+CauchyTransform(sp::OscLaurent) = ConcreteCauchyTransform(sp)
+CauchyTransform() = ConcreteCauchyTransform(UnsetSpace())
+# not needed yet
+function Base.convert(::Type{Operator{T}},D::ConcreteFourierTransform) where T
+    if T==eltype(D)
+        D
+    else
+        ConcreteFourierTransform{typeof(D.space),T}(D.space)
+    end
+end
+
+function Base.convert(::Type{Operator{T}},D::CauchyTransformWrapper) where T
+    if T==eltype(D)
+        D
+    else
+        # work around typeinfernece bug
+        op=convert(Operator{T},D.op)
+        CauchyTransformWrapper{typeof(op),typeof(domainspace(op)),T}(op)
+    end
+end
+
+ApproxFunBase.domain(D::ConcreteCauchyTransform) = domain(D.space)
+ApproxFunBase.domainspace(D::ConcreteCauchyTransform) = D.space
+Base.getindex(::ConcreteCauchyTransform{UnsetSpace,T},k::Integer,j::Integer) where {OT,T} =
+    error("Spaces cannot be inferred for operator")
+ApproxFunBase.rangespace(D::ConcreteCauchyTransform{UnsetSpace,T}) where {OT,T} = UnsetSpace()
+ApproxFunBase.promotedomainspace(D::CauchyTransform,sp::UnsetSpace) = D
+function ApproxFunBase.promotedomainspace(D::CauchyTransform,sp::Space)
+    if isambiguous(domain(sp))
+        CauchyTransform(typeof(sp)(domain(D)))
+    else
+        CauchyTransform(sp)
+    end
+end
+
+choosedomainspace(M::CauchyOperator{UnsetSpace},sp::Space) =
+    iswrapper(M) ? choosedomainspace(M.op,sp) : sp
+
+function rangespace(D::ConcreteCauchyTransform{S,T}) where {S<:OscLaurent,T}
+    if D.space.exp != 0.0
+        dom = D.space
+        SumSpace(D.space,OscLaurent(dom,0.0))
+    else
+        D.space
+    end
+end
+
+function osclaurent_cauchy_getindex(k::Integer,j::Integer,L::Float64,T::Type)
+    if j != k + 1
+        return zero(T)
+    else
+        # switch to double-infinite indices
+        # k=iseven(k) ? -k÷2 : (k-1)÷2
+        j = iseven(j) ? -j÷2 : (j-1)÷2
+        return 4*π*L*(-1)^(j+1)
+    end
+end
+
+getindex(D::ConcreteCauchyTransform{OscLaurent{DD,RR},OT,T},k::Integer,j::Integer) where {DD,RR,OT,T} = osclaurent_ft_getindex(k,j,D.space.domain.L,T)
+bandwidths(D::ConcreteCauchyTransform{OscLaurent{DD,RR},OT,T}) where {DD,RR,OT,T} = (1,1)

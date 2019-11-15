@@ -24,7 +24,7 @@ import ApproxFunBase: normalize!, flipsign, FiniteRange, Fun, MatrixFun, UnsetSp
                 hasfasttransform, canonicalspace, domain, setdomain, prectype, domainscompatible,
                 plan_transform, plan_itransform, plan_transform!, plan_itransform!, transform, itransform, hasfasttransform,
                 CanonicalTransformPlan, ICanonicalTransformPlan,
-                Integral,
+                Integral, ∞,
                 domainspace, rangespace, boundary,
                 union_rule, conversion_rule, maxspace_rule, conversion_type, maxspace, hasconversion, points,
                 rdirichlet, ldirichlet, lneumann, rneumann, ivp, bvp,
