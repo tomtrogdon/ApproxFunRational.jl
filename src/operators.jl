@@ -95,55 +95,50 @@ abstract type FourierOperator{S,OT,T} <: Operator{T} end
 
 abstract type FourierTransform{S,OT,T} <: FourierOperator{S,OT,T} end
 
-struct ConcreteFourierTransform{S<:Space,OT,T} <: FourierTransform{S,OT,T}
-    space::S
-    sign::OT
-end
+for Op in (:FourierTransform,:δFourierTransform)
+    ConcOp = Meta.parse("Concrete"*string(Op))
+    OpWrap = Meta.parse(string(OP)*"Wrapper")
 
-struct ConcreteδFourierTransform{S<:Space,OT,T} <: FourierTransform{S,OT,T}
-    space::S
-    sign::OT
-end
-
-struct FourierTransformWrapper{BT<:Operator,S<:Space,OT,T} <: FourierTransform{S,OT,T}
-    op::BT
-    sign::OT
-end
-
-@wrapper FourierTransformWrapper
-
-ConcreteFourierTransform(sp::Space,k) = ConcreteFourierTransform{typeof(sp),typeof(k),prectype(sp)}(sp,k)
-
-FourierTransform(sp::UnsetSpace,k) = ConcreteFourierTransform(sp,k)
-ConcreteFourierTransform(sp::Space) = ConcreteFourierTransform(sp,1.0)
-
-FourierTransform(sp::OscLaurent,k) = ConcreteFourierTransform(sp,k)
-FourierTransform(sp::OscLaurent) = ConcreteFourierTransform(sp,1.0)
-FourierTransform() = ConcreteFourierTransform(UnsetSpace(),1.0)
-# not needed yet
-function Base.convert(::Type{Operator{T}},D::ConcreteFourierTransform) where T
-    if T==eltype(D)
-        D
-    else
-        ConcreteFourierTransform{typeof(D.space),T}(D.space)
+    struct $ConcOp{S<:Space,OT,T} <: FourierTransform{S,OT,T}
+        space::S
+        sign::OT
     end
-end
 
-function Base.convert(::Type{Operator{T}},D::FourierTransformWrapper) where T
-    if T==eltype(D)
-        D
-    else
-        # work around typeinfernece bug
-        op=convert(Operator{T},D.op)
-        FourierTransformWrapper{typeof(op),typeof(domainspace(op)),T}(op)
+    struct $OpWrap{BT<:Operator,S<:Space,OT,T} <: FourierTransform{S,OT,T}
+        op::BT
+        sign::OT
     end
-end
 
-ApproxFunBase.domain(D::ConcreteFourierTransform) = domain(D.space)
-ApproxFunBase.domainspace(D::ConcreteFourierTransform) = D.space
-Base.getindex(::ConcreteFourierTransform{UnsetSpace,T},k::Integer,j::Integer) where {OT,T} =
-    error("Spaces cannot be inferred for operator")
-ApproxFunBase.rangespace(D::ConcreteFourierTransform{UnsetSpace,OT,T}) where {OT,T} = UnsetSpace()
+    @wrapper $OpWrap
+
+    $ConcOp(sp::Space,k) = $ConcOp{typeof(sp),typeof(k),prectype(sp)}(sp,k)
+    $ConcOp(sp::Space) = $ConcOp(sp,1.0)
+
+
+    # not needed yet
+    function Base.convert(::Type{Operator{T}},D::$ConcOp) where T
+        if T==eltype(D)
+            D
+        else
+            $ConcOp{typeof(D.space),T}(D.space)
+        end
+    end
+
+    function Base.convert(::Type{Operator{T}},D::$WrapOp) where T
+        if T==eltype(D)
+            D
+        else
+            # work around typeinfernece bug
+            op=convert(Operator{T},D.op)
+            $WrapOp{typeof(op),typeof(domainspace(op)),T}(op)
+        end
+    end
+
+    ApproxFunBase.domain(D::$ConcOp) = domain(D.space)
+    ApproxFunBase.domainspace(D::$ConcOp) = D.space
+    Base.getindex(::$ConcOp{UnsetSpace,T},k::Integer,j::Integer) where {OT,T} =
+        error("Spaces cannot be inferred for operator")
+        ApproxFunBase.rangespace(D::$ConcOp{UnsetSpace,OT,T}) where {OT,T} = UnsetSpace()
 ApproxFunBase.promotedomainspace(D::FourierTransform,sp::UnsetSpace) = D
 function ApproxFunBase.promotedomainspace(D::FourierTransform,sp::Space)
     if isambiguous(domain(sp))
@@ -167,6 +162,11 @@ function rangespace(D::ConcreteFourierTransform{S,OT,T}) where {S<:OscLaurent,OT
         SumSpace(LaguerreWeight(0.0,0.5,sp2),LaguerreWeight(0.0,0.5,sp1))
     end
 end
+
+FourierTransform(sp::UnsetSpace,k) = ConcreteFourierTransform(sp,k)
+FourierTransform(sp::OscLaurent,k) = ConcreteFourierTransform(sp,k)
+FourierTransform(sp::OscLaurent) = ConcreteFourierTransform(sp,1.0)
+FourierTransform() = ConcreteFourierTransform(UnsetSpace(),1.0)
 
 function osclaurent_ft_getindex(k::Integer,j::Integer,L::Float64,T::Type)
     if j != k + 1
