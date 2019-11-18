@@ -1,5 +1,5 @@
 module ApproxFunRational
-using Base, ApproxFun, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAlgebra, ApproxFunOrthogonalPolynomials, ApproxFunRational#, Reexport, AbstractFFTs, FFTW, InfiniteArrays, FillArrays, FastTransforms, IntervalSets,
+using Base, ApproxFun, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAlgebra, ApproxFunOrthogonalPolynomials, ApproxFunRational#, MacroTools#, Reexport, AbstractFFTs, FFTW, InfiniteArrays, FillArrays, FastTransforms, IntervalSets,
             #DomainSets, SpecialFunctions
 
 @reexport using ApproxFunBase
@@ -8,7 +8,7 @@ using Base, ApproxFun, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAl
 
 import ApproxFunBase: normalize!, flipsign, FiniteRange, Fun, MatrixFun, UnsetSpace, VFun, RowVector,
                 UnivariateSpace, AmbiguousSpace, SumSpace, SubSpace, WeightSpace, NoSpace, Space,
-                HeavisideSpace, PointSpace,
+                HeavisideSpace, PointSpace, dimension,
                 IntervalOrSegment, RaggedMatrix, AlmostBandedMatrix,
                 AnyDomain, ZeroSpace, ArraySpace, TrivialInterlacer, BlockInterlacer,
                 AbstractTransformPlan, TransformPlan, ITransformPlan,
