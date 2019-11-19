@@ -3,6 +3,25 @@ using Test
 
 ## TODO: test inner product
 
+@testset "ApproxFunRational.jl: Fourier transform" begin
+    f = x -> 1. + (x+x^2)*exp(-x^2+1im*x^2)
+    α = 2.0
+    L = 2.0
+    F = Fun(cai(f,1.0),OscLaurent(α,L))
+    𝓕 = FourierTransform(3.0)
+    𝓗 = FourierTransform(-3.0)
+    FF = 𝓗*(𝓕*F)
+    @test F(.1) ≈ FF(.1)
+
+    f = x -> (x+x^2)*exp(-x^2+1im*x^2)
+    α = 2.0
+    L = 2.0
+    F = Fun(zai(f),OscLaurent(α,L))
+    𝓕 = FourierTransform(1.0)
+    Fhat = 𝓕*F
+    @test Fhat(.1) ≈ -0.1979914917932347 + 0.2718859895675688im
+end
+
 @testset "ApproxFunRational.jl: Matrix-vector function product" begin
     L = 1.; α = -2.; β = 2.;
     dom = PeriodicLine{false,Float64}(0.,L)
@@ -39,8 +58,8 @@ end
     dom = PeriodicLine{false,Float64}(0.,L)
     g = z -> sech(z)
     G = Fun(zai(g), OscLaurent(dom,α), 200)
-    GCP = CauchyP(G)
-    GCM = CauchyM(G)
+    GCP = ApproxFunRational.CauchyP(G)
+    GCM = ApproxFunRational.CauchyM(G)
     @test GCP(.1) - GCM(.1) ≈ G(.1)
     @test GCP(.1) ≈ 0.027382689548799077 + 0.0017439616653601026im
     @test GCM(.1) ≈ -0.9478038907592183 + 0.1994240679809568im

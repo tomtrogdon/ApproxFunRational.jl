@@ -160,9 +160,20 @@ hasconversion(b::DiracSpace,a::LaguerreWeight) = false
 @fourier_operator(δFourierTransform)
 @fourier_operator(SFourierTransform)
 
-function FourierTransform(k::Float64)
-    SFourierTransform(k) + δFourierTransform(k)
+
+abstract type AbstractFourierTransform end
+struct FourierTransform <:AbstractFourierTransform
+    A
+    B
 end
+FourierTransform(k) = FourierTransform(SFourierTransform(k),δFourierTransform(k))
+
+*(F::AbstractFourierTransform,f::Fun{T}) where {T <: OscLaurent} = F.A*f + F.B*f
+*(F::AbstractFourierTransform,f::Fun{T}) where {T <: LaguerreWeight} = F.A*f + F.B*f
+*(F::AbstractFourierTransform,f::Fun{T}) where {T <: DiracSpace} = F.A*f + F.B*f
+*(F::AbstractFourierTransform,f::Fun{T}) where {T <: PiecewiseSpace} = sum(map(x ->F*x,components(f)))
+
+# BEGIN: FourierTransform of OscLaurent space
 
 SFourierTransform(sp::OscLaurent,k) = ConcreteSFourierTransform(sp,k)
 SFourierTransform(k::Float64) = ConcreteSFourierTransform(UnsetSpace(),k)
@@ -182,9 +193,9 @@ function rangespace(D::ConcreteSFourierTransform{S,OT,T}) where {S<:OscLaurent,O
     sp2 = Laguerre(1.0,Ray(α,π,1/(2.0*L),true))
     sp0 = DiracSpace(D.space.exp/D.sign)
     if D.sign > 0.
-        SumSpace(sp0,LaguerreWeight(0.0,0.5,sp2),LaguerreWeight(0.0,0.5,sp1))
+        PiecewiseSpace(sp0,LaguerreWeight(0.0,0.5,sp2),LaguerreWeight(0.0,0.5,sp1))
     else
-        SumSpace(sp0,LaguerreWeight(0.0,0.5,sp1),LaguerreWeight(0.0,0.5,sp2))
+        PiecewiseSpace(sp0,LaguerreWeight(0.0,0.5,sp1),LaguerreWeight(0.0,0.5,sp2))
     end
 end
 
@@ -195,56 +206,114 @@ function rangespace(D::ConcreteδFourierTransform{S,OT,T}) where {S<:OscLaurent,
     sp2 = Laguerre(1.0,Ray(α,π,1/(2.0*L),true))
     sp0 = DiracSpace(D.space.exp/D.sign)
     if D.sign > 0.
-        SumSpace(sp0,LaguerreWeight(0.0,0.5,sp2),LaguerreWeight(0.0,0.5,sp1))
+        PiecewiseSpace(sp0,LaguerreWeight(0.0,0.5,sp2),LaguerreWeight(0.0,0.5,sp1))
     else
-        SumSpace(sp0,LaguerreWeight(0.0,0.5,sp1),LaguerreWeight(0.0,0.5,sp2))
+        PiecewiseSpace(sp0,LaguerreWeight(0.0,0.5,sp1),LaguerreWeight(0.0,0.5,sp2))
     end
 end
 
-#TODO: Check this
+function getindex(D::ConcreteδFourierTransform{S,OT,T},k::Integer,j::Integer) where {S<:OscLaurent,OT,T}
+    if k == 1
+        j = iseven(j) ? -j÷2 : (j-1)÷2
+        return (-1)^j
+    else
+        return zero(T)
+    end
+ end
+
+# Base.size(A::ConcreteδFourierTransform{S,OT,T},k::Integer)  where {S<:OscLaurent,OT,T} = k==1 ? 1 : dimension(domainspace(A))
+ bandwidths(D::ConcreteδFourierTransform{OscLaurent{DD,RR},OT,T}) where {DD,RR,OT,T} = 0,∞
+ function osclaurent_ft_getindex(k::Integer,j::Integer,L::Float64,T::Type)
+     if j == 1 || j != k
+         return zero(T)
+     else
+         # switch to double-infinite indices
+         # k=iseven(k) ? -k÷2 : (k-1)÷2
+         j = iseven(j) ? -j÷2 : (j-1)÷2
+         return -4*π*L*(-1)^(j)
+     end
+ end
+ getindex(D::ConcreteSFourierTransform{OscLaurent{DD,RR},OT,T},k::Integer,j::Integer) where {DD,RR,OT,T} = osclaurent_ft_getindex(k,j,D.space.domain.L,T)
+ bandwidths(D::ConcreteSFourierTransform{OscLaurent{DD,RR},OT,T}) where {DD,RR,OT,T} = 0,0
+
+
+# END: FourierTransform of OscLaurent space
+
+# BEGIN:  FourierTransform of DiracSpace
+
+δFourierTransform(sp::DiracSpace,k) = ConcreteδFourierTransform(sp,k)
+SFourierTransform(sp::DiracSpace,k) = ConcreteSFourierTransform(sp,k)
+
+function rangespace(D::ConcreteδFourierTransform{S,OT,T}) where {S<:DiracSpace,OT,T}
+    @assert length(D.space.points) == 1
+    α = -D.space.points[1]*D.sign
+    L = 1.0
+    OscConstantSpace(α,L)
+end
+
+function rangespace(D::ConcreteSFourierTransform{S,OT,T}) where {S<:DiracSpace,OT,T}
+    @assert length(D.space.points) == 1
+    α = -D.space.points[1]*D.sign
+    L = 1.0
+    OscConstantSpace(α,L)
+end
+
+function getindex(D::ConcreteδFourierTransform{S,OT,T},k::Integer,j::Integer) where {S<:DiracSpace,OT,T}
+     if k == j == 1
+         return one(T)
+     else
+         return zero(T)
+     end
+end
+
+function getindex(D::ConcreteSFourierTransform{S,OT,T},k::Integer,j::Integer) where {S<:DiracSpace,OT,T}
+     return zero(T)
+end
+
+bandwidths(D::ConcreteSFourierTransform{S,OT,T}) where {S<:DiracSpace,OT,T} = 0,0
+bandwidths(D::ConcreteδFourierTransform{S,OT,T}) where {S<:DiracSpace,OT,T} = 0,0
+# END: FourierTransform of DiracSpace
+
+# BEGIN: FourierTransform of LaguerreWeight
+SFourierTransform(sp::LaguerreWeight,k) = ConcreteSFourierTransform(sp,k)
+δFourierTransform(sp::LaguerreWeight,k) = ConcreteδFourierTransform(sp,k)
+
 
 function rangespace(D::ConcreteδFourierTransform{S,OT,T}) where {S<:LaguerreWeight,OT,T}
-    @assert S.α == 0.0 && S.L == 0.5
     sp = D.space
-    α = sp.space.domain.center*D.sign
-    L = 1/(D.sign*2*sp.space.domain.L)
+    @assert sp.α == 0.0 && sp.L == 0.5
+    α = -sp.space.domain.center*D.sign
+    L = abs(1/(D.sign*2*sp.space.domain.L))
     OscLaurent(α,L)
 end
 
 function rangespace(D::ConcreteSFourierTransform{S,OT,T}) where {S<:LaguerreWeight,OT,T}
-    @assert S.α == 0.0 && S.L == 0.5
     sp = D.space
-    α = sp.space.domain.center*D.sign
-    L = 1/(D.sign*2*sp.space.domain.L)
+    @assert sp.α == 0.0 && sp.L == 0.5
+    α = -sp.space.domain.center*D.sign
+    L = abs(1/(D.sign*2*sp.space.domain.L))
     OscLaurent(α,L)
 end
 
-## TODO: Implement OscConstantSpace to deal with the fourier transform of delta functions
-
-#rangespace(D::ConcreteδFourierTransform{S,OT,T}) where {S<:OscLaurent,OT,T} = DiracSpace(D.space.exp/D.sign)
-#Base.size(A::ConcreteδFourierTransform{S,OT,T},k::Integer)  where {S<:OscLaurent,OT,T} = k==1 ? 1 : dimension(domainspace(A))
-bandwidths(D::ConcreteδFourierTransform{OscLaurent{DD,RR},OT,T}) where {DD,RR,OT,T} = 0,∞
-
-function osclaurent_ft_getindex(k::Integer,j::Integer,L::Float64,T::Type)
-    if k == 1 || j != k
+function getindex(D::ConcreteSFourierTransform{S,OT,T},k::Integer,j::Integer) where {S<:LaguerreWeight,OT,T}
+    sp = D.space
+    L = 1/(D.sign*2*sp.space.domain.L)
+    ang = angle(sp.space.domain)
+    @assert ang ≈ 0.0 || ang ≈ π
+    if k > 1 && k != 2j + (ang ≈ 0.0 ? 1 : 0)
         return zero(T)
+    elseif k == 1
+        return -1/(4*π*L*(-1)^(j))
     else
-        # switch to double-infinite indices
-        # k=iseven(k) ? -k÷2 : (k-1)÷2
-        j = iseven(j) ? -j÷2 : (j-1)÷2
-        return -4*π*L*(-1)^(j)
+        return 1/(4*π*L*(-1)^(j))
     end
 end
 
-getindex(D::ConcreteSFourierTransform{OscLaurent{DD,RR},OT,T},k::Integer,j::Integer) where {DD,RR,OT,T} = osclaurent_ft_getindex(k,j,D.space.domain.L,T)
-bandwidths(D::ConcreteSFourierTransform{OscLaurent{DD,RR},OT,T}) where {DD,RR,OT,T} = 0,0
-maxspace(a::LaguerreWeight,b::LaguerreWeight) =  spacescompatible(a,b) ? a : PiecewiseSpace(a,b)
+function getindex(D::ConcreteδFourierTransform{S,OT,T},k::Integer,j::Integer) where {S<:LaguerreWeight,OT,T}
+     return zero(T)
+end
 
-function getindex(D::ConcreteδFourierTransform{OscLaurent{DD,RR},OT,T},k::Integer,j::Integer) where {DD,RR,OT,T}
-    if k != 1
-        return zero(T)
-    else
-        j = iseven(j) ? -j÷2 : (j-1)÷2
-        return (-1)^j
-    end
- end
+bandwidths(D::ConcreteSFourierTransform{S,OT,T}) where {S<:LaguerreWeight,OT,T} = ∞,3
+bandwidths(D::ConcreteδFourierTransform{S,OT,T}) where {S<:LaguerreWeight,OT,T} = 0,0
+israggedbelow(D::ConcreteSFourierTransform{S,OT,T}) where {S<:LaguerreWeight,OT,T} = true
+colstop(D::ConcreteSFourierTransform{S,OT,T},j::Integer) where {S<:LaguerreWeight,OT,T} = 2*j+2 # can be refined to include the zero columns

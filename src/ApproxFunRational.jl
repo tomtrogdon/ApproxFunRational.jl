@@ -8,7 +8,7 @@ using Base, ApproxFun, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAl
 
 import ApproxFunBase: normalize!, flipsign, FiniteRange, Fun, MatrixFun, UnsetSpace, VFun, RowVector,
                 UnivariateSpace, AmbiguousSpace, SumSpace, SubSpace, WeightSpace, NoSpace, Space,
-                HeavisideSpace, PointSpace, dimension,
+                HeavisideSpace, PointSpace, dimension, colstop, israggedbelow, rowstop,
                 IntervalOrSegment, RaggedMatrix, AlmostBandedMatrix,
                 AnyDomain, ZeroSpace, ArraySpace, TrivialInterlacer, BlockInterlacer,
                 AbstractTransformPlan, TransformPlan, ITransformPlan,
@@ -63,8 +63,7 @@ import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, 
 
 import ApproxFunOrthogonalPolynomials: Laguerre
 
-
-export PeriodicLine, OscLaurent, zai, cai, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform#, spacescompatible
+export PeriodicLine, OscLaurent, OscConstantSpace, zai, cai, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform#, spacescompatible
 #include("Domains/Domains.jl")
 
 struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
@@ -80,12 +79,43 @@ OscLaurent(α::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,1.),α)
 OscLaurent(α::Float64,L::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,L),α)
 OscLaurent() = OscLaurent(PeriodicLine())
 
+struct OscConstantSpace{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
+    domain::D
+    exp::Float64
+    OscConstantSpace{D,R}(d,ex) where {D,R} = new{D,R}(d,ex)
+    OscConstantSpace{D,R}(d) where {D,R} = new{D,R}(d,0.)
+    OscConstantSpace{D,R}() where {D,R} = new{D,R}(D(),0.,0)
+end
+OscConstantSpace(d::PeriodicLine,exp::Float64) = OscConstantSpace{typeof(d),complex(prectype(d))}(d,exp)
+OscConstantSpace(d::PeriodicLine) = OscConstantSpace(d,0.)
+OscConstantSpace(α::Float64) = OscConstantSpace(PeriodicLine{false,Float64}(0.,1.),α)
+OscConstantSpace(α::Float64,L::Float64) = OscConstantSpace(PeriodicLine{false,Float64}(0.,L),α)
+OscConstantSpace() = OscConstantSpace(PeriodicLine())
+
+maxspace(a::LaguerreWeight,b::LaguerreWeight) =  spacescompatible(a,b) ? a : PiecewiseSpace(a,b)
+maxspace(a::OscLaurent,b::OscConstantSpace) = a
+maxspace(b::OscConstantSpace,a::OscLaurent) = a
+
+function getindex(C::ConcreteConversion{A,B,T},k::Integer,j::Integer) where {A<:OscConstantSpace,B<:OscLaurent,T}
+    if j == k == 1
+        return one(T)
+    else
+        return zero(T)
+    end
+end
+Base.size(C::ConcreteConversion{A,B,T}) where {A<:OscConstantSpace,B<:OscLaurent,T} = (∞,1)
++(f::Fun{S},g::Fun{T}) where {S<:OscConstantSpace,T<:OscLaurent} = g+f
+-(f::Fun{S},g::Fun{T}) where {S<:OscConstantSpace,T<:OscLaurent} = g-f
+bandwidths(C::ConcreteConversion{A,B,T}) where {A<:OscConstantSpace,B<:OscLaurent,T} = (0,0)
+Conversion(A::OscConstantSpace,B::OscLaurent) = ConcreteConversion(A::OscConstantSpace,B::OscLaurent)
+
 function *(f::Fun{OscLaurent{D,R}},g::Fun{OscLaurent{D,R}})  where {D,R}
     sp = OscLaurent(f.space.domain,f.space.exp+g.space.exp)
     m = maximum([length(f.coefficients),length(g.coefficients)])
     Fun(sp,ApproxFun.transform(sp,values(pad(f,m)).*values(pad(g,m))))
 end
 
+evaluate(f::Fun{OscConstantSpace{D,R}},x::Float64) where {D,R} = f.coefficients[1]*exp(1im*f.space.exp*x)
 function *(A::Array{T,2},b::Array{S,1})  where {T<:Fun,S<:Fun}
     c = [];
     for i = 1:size(A)[1]
@@ -97,6 +127,12 @@ function *(A::Array{T,2},b::Array{S,1})  where {T<:Fun,S<:Fun}
     end
     c
 end
+
+spacescompatible(A::OscConstantSpace,B::OscLaurent) = false
+spacescompatible(B::OscLaurent,A::OscConstantSpace) = A.exp == B.exp
+spacescompatible(B::OscConstantSpace,A::OscConstantSpace) = A.exp == B.exp
+#hasconversion(A::OscConstantSpace,B::OscLaurent) = A.exp == B.exp
+#hasconversion(B::OscLaurent,A::OscConstantSpace) = false
 
 ## A hack, definitely
 ## There is an issue because if F = Fun(f,OscLaurent(α)) then F != f, typically
@@ -114,7 +150,6 @@ function ⋅(f::Fun{T},g::Fun{S}) where {S<:ApproxFun.ArraySpace{Q,1},T<:ApproxF
 end
 
 spacescompatible(a::OscLaurent{D,R},b::OscLaurent{D,R}) where {D,R} = a.exp == b.exp
-
 fourierpoints(n::Integer) = fourierpoints(Float64,n)
 fourierpoints(::Type{T},n::Integer) where {T<:Number} = convert(T,π)*collect(0:2:2n-2)/n
 
