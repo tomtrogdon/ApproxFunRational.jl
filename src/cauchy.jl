@@ -32,8 +32,7 @@ function Res(j::Int64,α::Float64,β::Float64,z::AbstractVector{T}) where T<:Num
   return -LagSeries(abs(j),y,x)
 end
 
-function Res(α::Float64,β::Float64,z::AbstractVector{T},cfs::AbstractVector{S}) where {T<:Number,S<:Number}
-  j = length(cfs)
+function Res(j::Integer,α::Float64,β::Float64,z::AbstractVector{T},cfs::AbstractVector{S}) where {T<:Number,S<:Number}
   x = -2im*sign(j)*β./(z.+1im*sign(j)*β)
   y = -2*sign(j)*α*β
   return -LagSeries(y,x,cfs)
@@ -50,12 +49,12 @@ function CauchyPNO(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}# returns the non-osc
     elseif α < 0.
       #m = length(f.coefficients[3:2:end])
       #c = Res(m,α,domain(space(f)).L,points(f))
-      return Fun(sp,ApproxFun.transform(sp,-Res(α,domain(space(f)).L,points(f),f.coefficients[3:2:end])))
+      return Fun(sp,ApproxFun.transform(sp,-Res(1,α,domain(space(f)).L,points(f),f.coefficients[3:2:end])))
       #return Fun(sp,ApproxFun.transform(sp,-c*([(-1)^i for i = 1:m].*f.coefficients[3:2:end])))
     else
       #m = length(f.coefficients[2:2:end])
       #c = Res(-m,α,domain(space(f)).L,points(f))
-      return Fun(sp,ApproxFun.transform(sp,Res(α,domain(space(f)).L,points(f),f.coefficients[2:2:end])))
+      return Fun(sp,ApproxFun.transform(sp,Res(-1,α,domain(space(f)).L,points(f),f.coefficients[2:2:end])))
       #return Fun(sp,ApproxFun.transform(sp,c*([(-1)^i for i = 1:m].*f.coefficients[2:2:end])))
     end
 end
@@ -91,24 +90,19 @@ function CauchyMNO(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}# returns the non-osc
       #m = length(f.coefficients[3:2:end])
       #c = Res(m,α,domain(space(f)).L,points(f))
       #return Fun(sp,ApproxFun.transform(sp,-c*([(-1)^i for i = 1:m].*f.coefficients[3:2:end])))
-      return Fun(sp,ApproxFun.transform(sp,-Res(α,domain(space(f)).L,points(f),f.coefficients[3:2:end])))
+      return Fun(sp,ApproxFun.transform(sp,-Res(1,α,domain(space(f)).L,points(f),f.coefficients[3:2:end])))
     else
       #m = length(f.coefficients[2:2:end])
       #c = Res(-m,α,domain(space(f)).L,points(f))
       #return Fun(sp,ApproxFun.transform(sp,c*([(-1)^i for i = 1:m].*f.coefficients[2:2:end])))
-      return Fun(sp,ApproxFun.transform(sp,Res(α,domain(space(f)).L,points(f),f.coefficients[2:2:end])))
+      return Fun(sp,ApproxFun.transform(sp,Res(-1,α,domain(space(f)).L,points(f),f.coefficients[2:2:end])))
     end
 end
 
 for cauchy in (:CauchyP,:CauchyM)
   @eval begin
     function $cauchy(f::Fun{T}) where {T<:SumSpace}
-      n = length(f.space.spaces)
-      out = $cauchy(component(f,1))
-      for i = 2:n
-        out = out + $cauchy(component(f,2))
-      end
-      out
+      sum(map(x -> $cauchy(x),components(f)))
     end
 
     function $cauchy(f::Fun{T}) where {T<:ApproxFun.ArraySpace{J,1}} where {J}
@@ -117,4 +111,88 @@ for cauchy in (:CauchyP,:CauchyM)
   end
 end
 
-Cauchy(σ,f) = σ == 1 ? CauchyP(f) : CauchyM(f)
+abstract type SIOperator{S,OT,T} <: Operator{T} end
+
+macro SI_operator(Op)
+    ConcOp = Meta.parse("Concrete"*string(Op))
+    OpWrap = Meta.parse(string(Op)*"Wrapper")
+    return esc(quote
+        abstract type $Op{SSS,OT,TTT} <: SIOperator{SSS,OT,TTT} end
+
+        struct $ConcOp{S<:Space,OT,T} <: $Op{S,OT,T}
+            space::S
+            sign::OT
+        end
+
+        struct $OpWrap{BT<:Operator,S<:Space,OT,T} <: $Op{S,OT,T}
+            op::BT
+            sign::OT
+        end
+
+        @wrapper $OpWrap
+
+        $ConcOp(sp::Space,k) = $ConcOp{typeof(sp),typeof(k),prectype(sp)}(sp,k)
+        $ConcOp(sp::Space) = $ConcOp(sp,1)
+
+        $Op(sp::UnsetSpace,k) = $ConcOp(sp,k)
+        $Op(sp::UnsetSpace,k::Integer) = $ConcOp(sp,k)
+
+        # not needed yet
+        function Base.convert(::Type{Operator{T}},D::$ConcOp) where T
+            if T==eltype(D)
+            D
+            else
+                $ConcOp{typeof(D.space),typeof(D.sign),T}(D.space,D.sign)
+            end
+        end
+
+        function Base.convert(::Type{Operator{T}},D::$OpWrap) where T
+            if T==eltype(D)
+            D
+            else
+                # work around typeinfernece bug
+                op=convert(Operator{T},D.op)
+                $OpWrap{typeof(op),typeof(domainspace(op)),T}(op)
+            end
+        end
+
+        ApproxFunBase.domain(D::$ConcOp) = domain(D.space)
+        ApproxFunBase.domainspace(D::$ConcOp) = D.space
+        Base.getindex(::$ConcOp{UnsetSpace,T},k::Integer,j::Integer) where {OT,T} =
+            error("Spaces cannot be inferred for operator")
+        ApproxFunBase.rangespace(D::$ConcOp{UnsetSpace,OT,T}) where {OT,T} = UnsetSpace()
+
+        ApproxFunBase.promotedomainspace(D::$Op,sp::UnsetSpace) = D
+        function ApproxFunBase.promotedomainspace(D::$Op,sp::Space)
+            if isambiguous(domain(sp))
+                $Op(typeof(sp)(domain(D)),D.sign)
+            else
+                $Op(sp,D.sign)
+            end
+        end
+    end)
+end
+
+
+#Cauchy(σ,f) = σ == 1 ? CauchyP(f) : CauchyM(f)
+@SI_operator(CauchyOperator)
+
+function rangespace(D::ConcreteCauchyOperator{S,OT,T}) where {S<:OscLaurent,OT,T}
+    α = D.space.exp
+    L = D.space.domain.L
+    return SumSpace(OscLaurent(α,L),OscLaurent(0.0,L))
+end
+bandwidths(D::ConcreteCauchyOperator{OscLaurent{DD,RR},OT,T}) where {DD,RR,OT,T} = ∞,∞
+getindex(D::ConcreteCauchyOperator{OscLaurent{DD,RR},OT,T},k::Integer,j::Integer) where {DD,RR,OT,T} = one(T)
+
+##TODO: Finish implementation of CauchyOperator
+
+
+
+abstract type AbstractCauchyOperator end
+
+struct Cauchy <: AbstractCauchyOperator
+  pm::Integer
+end
+
+*(C::AbstractCauchyOperator,F::Fun) = (C.pm == 1) ? CauchyP(F) : CauchyM(F)

@@ -64,6 +64,27 @@ end
     @test GCP(.1) ≈ 0.027382689548799077 + 0.0017439616653601026im
     @test GCM(.1) ≈ -0.9478038907592183 + 0.1994240679809568im
 
+    L = 1.; α = -2.;
+    dom = PeriodicLine{false,Float64}(0.,L)
+    g = z -> exp(-z^2+z)
+    G = Fun(zai(g), OscLaurent(dom,α), 1000)
+    GCP = ApproxFunRational.CauchyP(G)
+    GCM = ApproxFunRational.CauchyM(G)
+    @test GCP(.1) - GCM(.1) ≈ G(.1)
+    @test GCP(.1) ≈ 0.030786661098655133 - 0.09357539334812659im
+    @test GCM(.1) ≈ -1.0415769846942182 + 0.12380347936876926im
+
+    L = 1.; α = 2.;
+    dom = PeriodicLine{false,Float64}(0.,L)
+    g = z -> exp(-z^2+z)
+    G = Fun(zai(g), OscLaurent(dom,α), 1000)
+    GCP = ApproxFunRational.CauchyP(G)
+    GCM = ApproxFunRational.CauchyM(G)
+    @test GCP(.1) - GCM(.1) ≈ G(.1)
+    @test GCP(.1) ≈ 1.0415769846942182 + 0.12380347936876926im
+    @test GCM(.1) ≈ -0.030786661098655133 - 0.09357539334812659im
+
+
     L = 2.; α = -2.;
     dom = PeriodicLine{false,Float64}(0.,L)
     g = z -> sech(z)
@@ -84,6 +105,7 @@ end
     @test GCP(.1) ≈ 0.027382689548799077 + 0.0017439616653601026im
     @test GCM(.1) ≈ -0.9478038907592183 + 0.1994240679809568im
 end
+
 
 @testset "ApproxFunRational.jl: Evaluation and multiplication" begin
     L = 1.; α = -2.; β = 2.;

@@ -63,7 +63,8 @@ import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, 
 
 import ApproxFunOrthogonalPolynomials: Laguerre
 
-export PeriodicLine, OscLaurent, OscConstantSpace, zai, cai, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform#, spacescompatible
+export PeriodicLine, OscLaurent, OscConstantSpace, zai, cai,
+condense, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform#, spacescompatible
 #include("Domains/Domains.jl")
 
 struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
@@ -128,9 +129,9 @@ function *(A::Array{T,2},b::Array{S,1})  where {T<:Fun,S<:Fun}
     c
 end
 
-spacescompatible(A::OscConstantSpace,B::OscLaurent) = false
-spacescompatible(B::OscLaurent,A::OscConstantSpace) = A.exp == B.exp
-spacescompatible(B::OscConstantSpace,A::OscConstantSpace) = A.exp == B.exp
+spacescompatible(A::OscConstantSpace{D,R},B::OscLaurent{D,R})  where {D,R} = false
+spacescompatible(B::OscLaurent{D,R},A::OscConstantSpace{D,R}) where {D,R} = A.exp ≈ B.exp
+spacescompatible(B::OscConstantSpace{D,R},A::OscConstantSpace{D,R}) where {D,R} = A.exp ≈ B.exp
 #hasconversion(A::OscConstantSpace,B::OscLaurent) = A.exp == B.exp
 #hasconversion(B::OscLaurent,A::OscConstantSpace) = false
 
@@ -149,7 +150,23 @@ function ⋅(f::Fun{T},g::Fun{S}) where {S<:ApproxFun.ArraySpace{Q,1},T<:ApproxF
     sum(transpose(conj(f))*g)[1]
 end
 
-spacescompatible(a::OscLaurent{D,R},b::OscLaurent{D,R}) where {D,R} = a.exp == b.exp
+function ⋅(f::Fun{T},g::Fun{S}) where {S,T}
+    sum(conj(f)*g)
+end
+
+function condense(f::Fun{T}) where {T <: SumSpace}
+    sum(components(f))
+end
+
+function condense(f::Fun{T}) where {T <: ArraySpace{S}} where {S<:SumSpace}
+    Fun(map( x -> sum(components(x)), Array(f)))
+end
+
+function condense(f::Fun{T}) where {T <: ArraySpace{S}} where {S<:Space}
+    f
+end
+
+spacescompatible(a::OscLaurent{D,R},b::OscLaurent{D,R}) where {D,R} = a.exp ≈ b.exp
 fourierpoints(n::Integer) = fourierpoints(Float64,n)
 fourierpoints(::Type{T},n::Integer) where {T<:Number} = convert(T,π)*collect(0:2:2n-2)/n
 

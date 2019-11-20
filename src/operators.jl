@@ -172,6 +172,7 @@ FourierTransform(k) = FourierTransform(SFourierTransform(k),δFourierTransform(k
 *(F::AbstractFourierTransform,f::Fun{T}) where {T <: LaguerreWeight} = F.A*f + F.B*f
 *(F::AbstractFourierTransform,f::Fun{T}) where {T <: DiracSpace} = F.A*f + F.B*f
 *(F::AbstractFourierTransform,f::Fun{T}) where {T <: PiecewiseSpace} = sum(map(x ->F*x,components(f)))
+*(F::AbstractFourierTransform,f::Fun{T}) where {T <: SumSpace} = sum(map(x ->F*x,components(f)))
 
 # BEGIN: FourierTransform of OscLaurent space
 
