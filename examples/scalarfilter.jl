@@ -19,7 +19,7 @@ b = Fun(zai(Pst),OscLaurent(-d,L),100)
 op = x -> x - G*(𝓒*x)
 out = GMRES(op,b,⋅,0.0001,50, x -> x)
 u = sum([out[2][i]*out[1][i] for i=1:length(out[2])])
-𝓕 = FourierTransform(1.0)
+𝓕 = FourierTransform(-1.0)
 U = 𝓕*u
 
 x = -10:.01:10

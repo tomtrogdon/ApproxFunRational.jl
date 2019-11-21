@@ -188,7 +188,7 @@ choosedomainspace(M::FourierOperator{UnsetSpace},sp::Space) =
     iswrapper(M) ? choosedomainspace(M.op,sp) : sp
 
 function rangespace(D::ConcreteSFourierTransform{S,OT,T}) where {S<:OscLaurent,OT,T}
-    α = D.space.exp/abs(D.sign)
+    α = D.space.exp/D.sign
     L = D.space.domain.L*abs(D.sign)
     sp1 = Laguerre(1.0,Ray(α,0.0,1/(2.0*L),true))
     sp2 = Laguerre(1.0,Ray(α,π,1/(2.0*L),true))
@@ -201,7 +201,7 @@ function rangespace(D::ConcreteSFourierTransform{S,OT,T}) where {S<:OscLaurent,O
 end
 
 function rangespace(D::ConcreteδFourierTransform{S,OT,T}) where {S<:OscLaurent,OT,T}
-    α = D.space.exp/abs(D.sign)
+    α = D.space.exp/D.sign
     L = D.space.domain.L*abs(D.sign)
     sp1 = Laguerre(1.0,Ray(α,0.0,1/(2.0*L),true))
     sp2 = Laguerre(1.0,Ray(α,π,1/(2.0*L),true))
@@ -301,12 +301,20 @@ function getindex(D::ConcreteSFourierTransform{S,OT,T},k::Integer,j::Integer) wh
     L = 1/(D.sign*2*sp.space.domain.L)
     ang = angle(sp.space.domain)
     @assert ang ≈ 0.0 || ang ≈ π
-    if k > 1 && k != 2j + (ang ≈ 0.0 ? 1 : 0)
+    if (ang ≈ 0.0 && D.sign < 0) || (ang ≈ π && D.sign > 0)
+        σ = 1
+    else
+        σ = 0
+    end
+
+    δ = D.sign < 0 ? 0 : 1
+
+    if k > 1 && k != 2j + σ#(ang ≈ 0.0 ? 1 : 0)
         return zero(T)
     elseif k == 1
-        return -1/(4*π*L*(-1)^(j))
+        return -1/(4*π*L*(-1)^(j+δ))
     else
-        return 1/(4*π*L*(-1)^(j))
+        return 1/(4*π*L*(-1)^(j+δ))
     end
 end
 
@@ -317,4 +325,4 @@ end
 bandwidths(D::ConcreteSFourierTransform{S,OT,T}) where {S<:LaguerreWeight,OT,T} = ∞,3
 bandwidths(D::ConcreteδFourierTransform{S,OT,T}) where {S<:LaguerreWeight,OT,T} = 0,0
 israggedbelow(D::ConcreteSFourierTransform{S,OT,T}) where {S<:LaguerreWeight,OT,T} = true
-colstop(D::ConcreteSFourierTransform{S,OT,T},j::Integer) where {S<:LaguerreWeight,OT,T} = 2*j+2 # can be refined to include the zero columns
+colstop(D::ConcreteSFourierTransform{S,OT,T},j::Integer) where {S<:LaguerreWeight,OT,T} = isodd(j) ? 2*j+1 : 2*j+1 # can be refined to include the zero columns
