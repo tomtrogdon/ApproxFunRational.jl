@@ -154,9 +154,13 @@ function ⋅(f::Fun{T},g::Fun{S}) where {S,T}
     sum(conj(f)*g)
 end
 
+function condense(f::Fun)
+    f
+end
+
 function condense(f::Fun{T}) where {T <: SumSpace}
     sum(components(f))
-end
+endCauchy(-1)*
 
 function condense(f::Fun{T}) where {T <: ArraySpace{S}} where {S<:SumSpace}
     Fun(map( x -> sum(components(x)), Array(f)))

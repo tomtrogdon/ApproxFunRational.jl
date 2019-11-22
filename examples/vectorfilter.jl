@@ -29,9 +29,9 @@ flip(f::Fun{OscLaurent{DD,RR}}) where {DD,RR} = Fun(conj(f.space), conj(conj(f).
 flip(f::Fun{T}) where T<:ApproxFunBase.SumSpace = sum(map(x -> flip(x),components(f)))
 
 H = zeros(Fun,2,2)
-a = Pss + Pnn + Pmm
-b = Pss*Fun(1.,OscLaurent(Δs,L)) + Pnn*Fun(1.,OscLaurent(Δn,L))
-bt = Pss*Fun(1.,OscLaurent(-Δs,L)) + Pnn*Fun(1.,OscLaurent(-Δn,L))
+a = Pss + Pnn + Pmm - One
+b = Pss*Fun(1.,OscLaurent(-Δs,L)) + Pnn*Fun(1.,OscLaurent(-Δn,L))
+bt = Pss*Fun(1.,OscLaurent(Δs,L)) + Pnn*Fun(1.,OscLaurent(Δn,L))
 H[1,1] = copy(a)
 H[2,2] = copy(a)
 H[1,2] = copy(b)
@@ -39,13 +39,13 @@ H[2,1] = copy(bt)
 G = copy(Fun(H))
 
 # Set up right-hand side
-b1 = Pss*Fun(1.,OscLaurent(-D + Ds1,L))
-b2 = Pss*Fun(1.,OscLaurent(-D + Ds2,L))
+b1 = Pss*Fun(1.,OscLaurent(- D + Ds1,L))
+b2 = Pss*Fun(1.,OscLaurent(- D + Ds2,L))
 h = Fun([b1,b2])
 
 𝓒 = Cauchy(-1)
 𝓢 = Cauchy(1)
-op = x -> condense( 𝓢*x - G*(𝓒*x))
+op = x -> condense( x - G*(𝓒*x))
 out = GMRES(op,h,⋅,.005,100,condense)
 
 u = sum([out[2][i]*out[1][i] for i=1:length(out[2]) ])
