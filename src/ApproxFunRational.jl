@@ -67,6 +67,10 @@ export PeriodicLine, OscLaurent, OscConstantSpace, zai, cai,
 condense, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform#, spacescompatible
 #include("Domains/Domains.jl")
 
+# Override the evaluation of Piecewise Funs
+evaluate(f::Fun{T},x) where {T <: PiecewiseSpace{S}} where S = sum(map(F -> F(x),components(f)))
+
+
 struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
     domain::D
     exp::Float64
@@ -150,6 +154,14 @@ function ⋅(f::Fun{T},g::Fun{S}) where {S<:ApproxFun.ArraySpace{Q,1},T<:ApproxF
     sum(transpose(conj(f))*g)[1]
 end
 
+function ⋅(f::Fun{T},g::Fun{S},s::Function) where {S<:ApproxFun.ArraySpace{Q,1},T<:ApproxFun.ArraySpace{J,1}} where {Q,J}
+    sum(s(transpose(conj(f))*g))[1]
+end
+
+function ⋅(f::Fun{T},g::Fun{S},s) where {S,T}
+    sum(s(conj(f)*g))
+end
+
 function ⋅(f::Fun{T},g::Fun{S}) where {S,T}
     sum(conj(f)*g)
 end
@@ -160,7 +172,7 @@ end
 
 function condense(f::Fun{T}) where {T <: SumSpace}
     sum(components(f))
-endCauchy(-1)*
+end
 
 function condense(f::Fun{T}) where {T <: ArraySpace{S}} where {S<:SumSpace}
     Fun(map( x -> sum(components(x)), Array(f)))
