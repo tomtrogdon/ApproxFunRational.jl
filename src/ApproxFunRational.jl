@@ -151,7 +151,7 @@ end
 
 ## Inner product for vectors.  Could extend to matrices using trace.
 function ⋅(f::Fun{T},g::Fun{S}) where {S<:ApproxFun.ArraySpace{Q,1},T<:ApproxFun.ArraySpace{J,1}} where {Q,J}
-    sum(transpose(conj(f))*g)[1]
+    sum(map(⋅,f,g))
 end
 
 function ⋅(f::Fun{T},g::Fun{S},s::Function) where {S<:ApproxFun.ArraySpace{Q,1},T<:ApproxFun.ArraySpace{J,1}} where {Q,J}

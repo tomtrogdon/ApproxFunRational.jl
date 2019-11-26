@@ -10,7 +10,8 @@ function LagSeries(j::Int64,z::Float64,x::AbstractVector{T}) where T # need to i
   return out
 end
 
-function LagSeries(z::Float64,x::AbstractVector{T},cfs::AbstractVector{S}) where {T,S} # need to investigate stability
+# old version, still here for testing
+function LagSeries_old(z::Float64,x::AbstractVector{T},cfs::AbstractVector{S}) where {T,S} # need to investigate stability
   j = length(cfs)
   c = Lag(j,z) # c[2] gives L_0^(1), c[i] gives L_{i-2}^(1)
   v0 = x
@@ -22,6 +23,32 @@ function LagSeries(z::Float64,x::AbstractVector{T},cfs::AbstractVector{S}) where
     pm = pm*(-1)
     @inbounds out = (1.0 .+ x).*out .+ x*(c[i+1]-c[i])
     @inbounds sum = sum + (pm*cfs[i])*out
+  end
+  return sum
+end
+
+function LagSeries(z::Float64,x::AbstractVector{T},cfs::AbstractVector{S}) where {T,S} # need to investigate stability
+  j = length(cfs)
+  #c = Lag(j,z) # c[2] gives L_0^(1), c[i] gives L_{i-2}^(1)
+  #v0 = x
+  #out = zeros(Complex{Float64},length(x))
+  c0 = 0.
+  c1 = exp(-z/2) # c[2]
+  out = x*c1
+  k = 0
+  pm = -1
+  sum = (pm*cfs[1])*out
+  for i = 2:j
+    pm = pm*(-1)
+    c2 = (2*k+2-z)*c1/(k+1) - c0 # c2 = c[i + 1]
+    #out = (1.0 .+ x).*out .+ x*(c2-c1)
+    out .*= (1.0 .+ x)
+    out .+= x*(c2-c1)
+    #@inbounds sum = sum + (pm*cfs[i])*out
+    @inbounds axpy!(pm*cfs[i],out,sum)
+    k += 1
+    c0 = c1
+    c1 = c2
   end
   return sum
 end
@@ -102,6 +129,10 @@ end
 for cauchy in (:CauchyP,:CauchyM)
   @eval begin
     function $cauchy(f::Fun{T}) where {T<:SumSpace}
+      sum(map(x -> $cauchy(x),components(f)))
+    end
+
+    function $cauchy(f::Fun{T}) where {T<:PiecewiseSpace}
       sum(map(x -> $cauchy(x),components(f)))
     end
 
