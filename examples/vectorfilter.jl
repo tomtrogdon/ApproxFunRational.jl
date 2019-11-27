@@ -1,6 +1,6 @@
 using ApproxFunOrthogonalPolynomials, ApproxFunRational,
  ApproxFunFourier, ApproxFunBase, ApproxFun, AbstractIterativeSolvers,
- Plots, Profile
+ Plots, Profile, LinearAlgebra
 ### Vector case
 tol = 1.e-5
 Ds1 = 0.5
@@ -46,18 +46,41 @@ h = [b1,b2]
 𝓢 = Cauchy(1)
 simp(f::Fun) = chop(condense(f),tol)
 simp(F::Array{T,1}) where T <: Fun = map(simp,F)
-inner(a,b) = ⋅(a,b)
+inner(a,b) = ⋅(simp(a),simp(b))
 
-function op(x::Array{T,1}) where T<:Fun
+function op(x::Array{T,1}) where T<:Fun{S} where S<:ApproxFun.SumSpace
     println("Apply Cauchy")
     @time y = 𝓒*x
     println("Apply G")
+    #@time y[1] = G[1,1]*y[1] + G[1,2]*y[2]
+    #@time y[2] = G[2,1]*y[1] + G[2,2]*y[2]
     @time y = G*y
     println("Subtract")
     @time y = x - y
     return y
 end
 
+function op(x::Array{T,1}) where T<:Fun
+    println("Apply Cauchy")
+    @time y = 𝓒*x
+    println("Apply G")
+    #@time y[1] = G[1,1]*y[1] + G[1,2]*y[2]
+    #@time y[2] = G[2,1]*y[1] + G[2,2]*y[2]
+    @time y = G*y
+    println("Subtract")
+    @time y = x - y
+    return y
+end
+
+v = h
+v = op(v);
+
+@time transpose(v)*v
+@time components(v)[1]*components(v)[1] + components(v)[2]*components(v)[2]
+
+
+sum(f1)(.1)
+f2(.1)
 #op = x -> simplify( x - G*(𝓒*x))
 out = GMRES(op,h,inner,1e-6,40,simp)
 u = sum([out[2][i]*out[1][i] for i=1:length(out[2])])

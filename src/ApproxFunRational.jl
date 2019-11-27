@@ -164,11 +164,11 @@ function ⋅(f::Fun{T},g::Fun{S},s) where {S,T}
 end
 
 function ⋅(f::Fun{T},g::Fun{S}) where {S,T}
-    @time sum(conj(f)*g)
+    sum(conj(f)*g)
 end
 
 function ⋅(f::Array{T,1},g::Array{S,1}) where {S<:Fun,T<:Fun}
-    sum(map(⋅,f,g))
+    @time sum(map(⋅,f,g))
 end
 
 function condense(f::Fun)
