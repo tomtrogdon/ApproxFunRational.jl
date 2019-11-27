@@ -9,7 +9,7 @@ using Base, ApproxFun, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAl
 import ApproxFunBase: normalize!, flipsign, FiniteRange, Fun, MatrixFun, UnsetSpace, VFun, RowVector,
                 UnivariateSpace, AmbiguousSpace, SumSpace, SubSpace, WeightSpace, NoSpace, Space,
                 HeavisideSpace, PointSpace, dimension, colstop, israggedbelow, rowstop,
-                IntervalOrSegment, RaggedMatrix, AlmostBandedMatrix,
+                IntervalOrSegment, RaggedMatrix, AlmostBandedMatrix, chop,
                 AnyDomain, ZeroSpace, ArraySpace, TrivialInterlacer, BlockInterlacer,
                 AbstractTransformPlan, TransformPlan, ITransformPlan,
                 ConcreteConversion, ConcreteMultiplication, ConcreteDerivative, ConcreteIntegral, CalculusOperator,
@@ -116,7 +116,8 @@ Conversion(A::OscConstantSpace,B::OscLaurent) = ConcreteConversion(A::OscConstan
 
 function *(f::Fun{OscLaurent{D,R}},g::Fun{OscLaurent{D,R}})  where {D,R}
     sp = OscLaurent(f.space.domain,f.space.exp+g.space.exp)
-    m = maximum([length(f.coefficients),length(g.coefficients)])
+    #m = maximum([length(f.coefficients),length(g.coefficients)])
+    m = length(f.coefficients) + length(g.coefficients)
     Fun(sp,ApproxFun.transform(sp,values(pad(f,m)).*values(pad(g,m))))
 end
 
@@ -163,11 +164,19 @@ function ⋅(f::Fun{T},g::Fun{S},s) where {S,T}
 end
 
 function ⋅(f::Fun{T},g::Fun{S}) where {S,T}
-    sum(conj(f)*g)
+    @time sum(conj(f)*g)
+end
+
+function ⋅(f::Array{T,1},g::Array{S,1}) where {S<:Fun,T<:Fun}
+    sum(map(⋅,f,g))
 end
 
 function condense(f::Fun)
     f
+end
+
+function condense(f::Array{T,1}) where T<:Fun
+    map(condense,f)
 end
 
 function condense(f::Fun{T}) where {T <: SumSpace}
@@ -182,6 +191,14 @@ function condense(f::Fun{T}) where {T <: ArraySpace{S}} where {S<:Space}
     f
 end
 
+function chop(f::Array{T,1}) where T<:Fun
+    map(chop,f)
+end
+
+function chop!(f::Array{T,1}) where T<:Fun
+    map(chop!,f)
+end
+
 spacescompatible(a::OscLaurent{D,R},b::OscLaurent{D,R}) where {D,R} = a.exp ≈ b.exp
 fourierpoints(n::Integer) = fourierpoints(Float64,n)
 fourierpoints(::Type{T},n::Integer) where {T<:Number} = convert(T,π)*collect(0:2:2n-2)/n
@@ -193,8 +210,6 @@ function fsum(x::AbstractVector{T}) where T
     x[1] + sum(x[2:2:end].*((-1)^j for j in 1:length(x[2:2:end]))) + sum(x[3:2:end].*((-1)^j for j in 1:length(x[3:2:end])))
 end
 
-c_s!(x) = 1# do nothing %x[1] = fsum(x) # normalize
-ic_s!(x) = 1# do nothing x[1] = x[1] - (fsum(x)-x[1])
 
 struct plan_mfft!
     P
@@ -203,7 +218,6 @@ plan_mfft!(x::AbstractVector{T}) where T = plan_mfft!(plan_fft!(x))
 
 function *(tr::plan_mfft!,x::AbstractVector{T}) where T
     tr.P*x
-    c_s!(x)
     return x
 end
 
@@ -213,7 +227,6 @@ end
 plan_mifft!(x::AbstractVector{T}) where T = plan_mifft!(plan_ifft!(x))
 
 function *(tr::plan_mifft!,x::AbstractVector{T}) where T
-    ic_s!(x)
     return tr.P*x
 end
 
@@ -237,13 +250,11 @@ function *(P::TransformPlan{T,OscLaurent{D,R},true},vals::AbstractVector{T}) whe
     #vals = [zero_nan(j) for j in vals]
     vals = lmul!(inv(convert(T,n)),P.plan*vals)
     reverseeven!(interlace!(vals,1))
-    c_s!(vals)
     vals
 end
 
 function *(P::ITransformPlan{T,OscLaurent{D,R},true},cfs::AbstractVector{T}) where {T,D,R}
     n = length(cfs)
-    ic_s!(cfs)
     reverseeven!(cfs)
     cfs[:]=[cfs[1:2:end];cfs[2:2:end]]  # TODO: deinterlace!
     lmul!(n,cfs)

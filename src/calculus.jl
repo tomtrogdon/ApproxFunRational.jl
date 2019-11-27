@@ -77,7 +77,7 @@ function Base.sum(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
         if ex > 0.
           #data = f.coefficients[2:2:end]
           j = 2
-        else ex < 0.
+        else
             #data = f.coefficients[3:2:end]
             j = 3
         end
@@ -86,7 +86,7 @@ function Base.sum(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
         k = 0
         for i = j:2:length(f.coefficients)
             o *= -1
-            c2 = (2*k -2 -z)*c1/(k+1) - c0
+            c2 = (2*k +2 -z)*c1/(k+1) - c0
             @inbounds s += o*c1*f.coefficients[i]
             c0 = c1
             c1 = c2

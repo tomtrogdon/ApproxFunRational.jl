@@ -227,3 +227,5 @@ struct Cauchy <: AbstractCauchyOperator
 end
 
 *(C::AbstractCauchyOperator,F::Fun) = (C.pm == 1) ? CauchyP(F) : CauchyM(F)
+
+*(C::AbstractCauchyOperator,F::Array{T,1}) where T<:Fun = map(x -> C*x, F)
