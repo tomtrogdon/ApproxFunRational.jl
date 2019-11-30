@@ -3,6 +3,42 @@ using Test
 
 ## TODO: test inner product
 
+@testset "ApproxFunRational.jl: Fourier transform" begin
+    f = x -> 1. + (x+x^2)*exp(-x^2+1im*x^2)
+    α = 2.0
+    L = 2.0
+    F = Fun(cai(f,1.0),OscLaurent(α,L))
+    𝓕 = FourierTransform(3.0)
+    𝓗 = FourierTransform(-3.0)
+    FF = 𝓗*(𝓕*F)
+    @test F(.1) ≈ FF(.1)
+
+    f = x -> (x+x^2)*exp(-x^2+1im*x^2)
+    α = 2.0
+    L = 2.0
+    F = Fun(zai(f),OscLaurent(α,L))
+    𝓕 = FourierTransform(1.0)
+    Fhat = 𝓕*F
+    @test Fhat(.1) ≈ -0.1979914917932347 + 0.2718859895675688im
+
+    f = x -> (x+x^2)*exp(-x^2+1im*x^2)
+    α = 2.0
+    L = 2.0
+    F = Fun(zai(f),OscLaurent(α,L))
+    𝓕 = FourierTransform(-1.0)
+    Fhat = 𝓕*F
+    @test Fhat(.1) ≈ -0.20287825133470003 + 0.22704533835040858im
+
+    f = x -> 1. + (x+x^2)*exp(-x^2+1im*x^2)
+    α = -2.0
+    L = 2.0
+    F = Fun(cai(f,1.0),OscLaurent(α,L),4)
+    𝓕 = FourierTransform(-1.0)
+    𝓗 = FourierTransform(1.0)
+    FF = 𝓗*(𝓕*F)
+    @test F(.1)-FF(.1) ≈ 0
+end
+
 @testset "ApproxFunRational.jl: Matrix-vector function product" begin
     L = 1.; α = -2.; β = 2.;
     dom = PeriodicLine{false,Float64}(0.,L)
@@ -38,19 +74,48 @@ end
     L = 1.; α = -2.;
     dom = PeriodicLine{false,Float64}(0.,L)
     g = z -> sech(z)
-    G = Fun(zai(g), OscLaurent(dom,α), 200)
-    GCP = CauchyP(G)
-    GCM = CauchyM(G)
-    @test GCP(.1) - GCM(.1) ≈ G(.1)
-    @test GCP(.1) ≈ 0.027382689548799077 + 0.0017439616653601026im
-    @test GCM(.1) ≈ -0.9478038907592183 + 0.1994240679809568im
+    G1 = Fun(zai(g), OscLaurent(dom,α), 200)
+    GCP = Cauchy(1)*G1
+    GCM = Cauchy(-1)*G1
+    @test GCP(.1) - GCM(.1) ≈ G1(.1)
+    a1 = 0.027382689548799077 + 0.0017439616653601026im
+    @test GCP(.1) ≈ a1
+    a2 = -0.9478038907592183 + 0.1994240679809568im
+    @test GCM(.1) ≈ a2
+
+    L = 1.; α = -2.;
+    dom = PeriodicLine{false,Float64}(0.,L)
+    g = z -> exp(-z^2+z)
+    G2 = Fun(zai(g), OscLaurent(dom,α), 1000)
+    GCP = Cauchy(1)*G2
+    GCM = Cauchy(-1)*G2
+    @test GCP(.1) - GCM(.1) ≈ G2(.1)
+    b1 = 0.030786661098655133 - 0.09357539334812659im
+    @test GCP(.1) ≈ b1
+    b2 = -1.0415769846942182 + 0.12380347936876926im
+    @test GCM(.1) ≈ b2
+
+    L = 1.; α = 2.;
+    dom = PeriodicLine{false,Float64}(0.,L)
+    g = z -> exp(-z^2+z)
+    G3 = Fun(zai(g), OscLaurent(dom,α), 1000)
+    GCP = Cauchy(1)*G3
+    GCM = Cauchy(-1)*G3
+    @test GCP(.1) - GCM(.1) ≈ G3(.1)
+    c1 = 1.0415769846942182 + 0.12380347936876926im
+    @test GCP(.1) ≈ c1
+    c2 = -0.030786661098655133 - 0.09357539334812659im
+    @test GCM(.1) ≈ c2
+
+    GCP = ApproxFunRational.CauchyP(G1 + G3)
+    @test GCP(.1) ≈ a1 + c1
 
     L = 2.; α = -2.;
     dom = PeriodicLine{false,Float64}(0.,L)
     g = z -> sech(z)
     G = Fun(zai(g), OscLaurent(dom,α), 300)
-    GCP = CauchyP(G)
-    GCM = CauchyM(G)
+    GCP = Cauchy(1)*G
+    GCM = Cauchy(-1)*G
     @test GCP(.1) - GCM(.1) ≈ G(.1)
     @test GCP(.1) ≈ 0.027382689548799077 + 0.0017439616653601026im
     @test GCM(.1) ≈ -0.9478038907592183 + 0.1994240679809568im
@@ -59,8 +124,8 @@ end
     dom = PeriodicLine{false,Float64}(0.,L)
     g = z -> sech(z)
     G = Fun(zai(g), OscLaurent(dom,α), 400)
-    GCP = CauchyP(G)
-    GCM = CauchyM(G)
+    GCP = Cauchy(1)*G
+    GCM = Cauchy(-1)*G
     @test GCP(.1) - GCM(.1) ≈ G(.1)
     @test GCP(.1) ≈ 0.027382689548799077 + 0.0017439616653601026im
     @test GCM(.1) ≈ -0.9478038907592183 + 0.1994240679809568im

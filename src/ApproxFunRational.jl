@@ -1,5 +1,5 @@
 module ApproxFunRational
-using Base, ApproxFun, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAlgebra#, Reexport, AbstractFFTs, FFTW, InfiniteArrays, FillArrays, FastTransforms, IntervalSets,
+using Base, ApproxFun, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAlgebra, ApproxFunOrthogonalPolynomials, ApproxFunRational#, MacroTools#, Reexport, AbstractFFTs, FFTW, InfiniteArrays, FillArrays, FastTransforms, IntervalSets,
             #DomainSets, SpecialFunctions
 
 @reexport using ApproxFunBase
@@ -8,8 +8,8 @@ using Base, ApproxFun, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAl
 
 import ApproxFunBase: normalize!, flipsign, FiniteRange, Fun, MatrixFun, UnsetSpace, VFun, RowVector,
                 UnivariateSpace, AmbiguousSpace, SumSpace, SubSpace, WeightSpace, NoSpace, Space,
-                HeavisideSpace, PointSpace,
-                IntervalOrSegment, RaggedMatrix, AlmostBandedMatrix,
+                HeavisideSpace, PointSpace, dimension, colstop, israggedbelow, rowstop,
+                IntervalOrSegment, RaggedMatrix, AlmostBandedMatrix, chop,
                 AnyDomain, ZeroSpace, ArraySpace, TrivialInterlacer, BlockInterlacer,
                 AbstractTransformPlan, TransformPlan, ITransformPlan,
                 ConcreteConversion, ConcreteMultiplication, ConcreteDerivative, ConcreteIntegral, CalculusOperator,
@@ -24,7 +24,7 @@ import ApproxFunBase: normalize!, flipsign, FiniteRange, Fun, MatrixFun, UnsetSp
                 hasfasttransform, canonicalspace, domain, setdomain, prectype, domainscompatible,
                 plan_transform, plan_itransform, plan_transform!, plan_itransform!, transform, itransform, hasfasttransform,
                 CanonicalTransformPlan, ICanonicalTransformPlan,
-                Integral,
+                Integral, ∞,
                 domainspace, rangespace, boundary,
                 union_rule, conversion_rule, maxspace_rule, conversion_type, maxspace, hasconversion, points,
                 rdirichlet, ldirichlet, lneumann, rneumann, ivp, bvp,
@@ -61,10 +61,15 @@ import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, 
                                 Array, Vector, Matrix, view, ones, @propagate_inbounds, print_array,
                                 split
 
+import ApproxFunOrthogonalPolynomials: Laguerre
 
-
-export PeriodicLine, OscLaurent, zai, cai, Cauchy, CauchyP, CauchyM, ⋅#, spacescompatible
+export PeriodicLine, OscLaurent, OscConstantSpace, zai, cai,
+condense, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform#, spacescompatible
 #include("Domains/Domains.jl")
+
+# Override the evaluation of Piecewise Funs
+evaluate(f::Fun{T},x) where {T <: PiecewiseSpace{S}} where S = sum(map(F -> F(x),components(f)))
+
 
 struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
     domain::D
@@ -79,12 +84,44 @@ OscLaurent(α::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,1.),α)
 OscLaurent(α::Float64,L::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,L),α)
 OscLaurent() = OscLaurent(PeriodicLine())
 
+struct OscConstantSpace{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
+    domain::D
+    exp::Float64
+    OscConstantSpace{D,R}(d,ex) where {D,R} = new{D,R}(d,ex)
+    OscConstantSpace{D,R}(d) where {D,R} = new{D,R}(d,0.)
+    OscConstantSpace{D,R}() where {D,R} = new{D,R}(D(),0.,0)
+end
+OscConstantSpace(d::PeriodicLine,exp::Float64) = OscConstantSpace{typeof(d),complex(prectype(d))}(d,exp)
+OscConstantSpace(d::PeriodicLine) = OscConstantSpace(d,0.)
+OscConstantSpace(α::Float64) = OscConstantSpace(PeriodicLine{false,Float64}(0.,1.),α)
+OscConstantSpace(α::Float64,L::Float64) = OscConstantSpace(PeriodicLine{false,Float64}(0.,L),α)
+OscConstantSpace() = OscConstantSpace(PeriodicLine())
+
+maxspace(a::LaguerreWeight,b::LaguerreWeight) =  spacescompatible(a,b) ? a : PiecewiseSpace(a,b)
+maxspace(a::OscLaurent,b::OscConstantSpace) = a
+maxspace(b::OscConstantSpace,a::OscLaurent) = a
+
+function getindex(C::ConcreteConversion{A,B,T},k::Integer,j::Integer) where {A<:OscConstantSpace,B<:OscLaurent,T}
+    if j == k == 1
+        return one(T)
+    else
+        return zero(T)
+    end
+end
+Base.size(C::ConcreteConversion{A,B,T}) where {A<:OscConstantSpace,B<:OscLaurent,T} = (∞,1)
++(f::Fun{S},g::Fun{T}) where {S<:OscConstantSpace,T<:OscLaurent} = g+f
+-(f::Fun{S},g::Fun{T}) where {S<:OscConstantSpace,T<:OscLaurent} = g-f
+bandwidths(C::ConcreteConversion{A,B,T}) where {A<:OscConstantSpace,B<:OscLaurent,T} = (0,0)
+Conversion(A::OscConstantSpace,B::OscLaurent) = ConcreteConversion(A::OscConstantSpace,B::OscLaurent)
+
 function *(f::Fun{OscLaurent{D,R}},g::Fun{OscLaurent{D,R}})  where {D,R}
     sp = OscLaurent(f.space.domain,f.space.exp+g.space.exp)
-    m = maximum([length(f.coefficients),length(g.coefficients)])
+    #m = maximum([length(f.coefficients),length(g.coefficients)])
+    m = length(f.coefficients) + length(g.coefficients)
     Fun(sp,ApproxFun.transform(sp,values(pad(f,m)).*values(pad(g,m))))
 end
 
+evaluate(f::Fun{OscConstantSpace{D,R}},x::Float64) where {D,R} = f.coefficients[1]*exp(1im*f.space.exp*x)
 function *(A::Array{T,2},b::Array{S,1})  where {T<:Fun,S<:Fun}
     c = [];
     for i = 1:size(A)[1]
@@ -96,6 +133,12 @@ function *(A::Array{T,2},b::Array{S,1})  where {T<:Fun,S<:Fun}
     end
     c
 end
+
+spacescompatible(A::OscConstantSpace{D,R},B::OscLaurent{D,R})  where {D,R} = false
+spacescompatible(B::OscLaurent{D,R},A::OscConstantSpace{D,R}) where {D,R} = A.exp ≈ B.exp
+spacescompatible(B::OscConstantSpace{D,R},A::OscConstantSpace{D,R}) where {D,R} = A.exp ≈ B.exp
+#hasconversion(A::OscConstantSpace,B::OscLaurent) = A.exp == B.exp
+#hasconversion(B::OscLaurent,A::OscConstantSpace) = false
 
 ## A hack, definitely
 ## There is an issue because if F = Fun(f,OscLaurent(α)) then F != f, typically
@@ -109,11 +152,54 @@ end
 
 ## Inner product for vectors.  Could extend to matrices using trace.
 function ⋅(f::Fun{T},g::Fun{S}) where {S<:ApproxFun.ArraySpace{Q,1},T<:ApproxFun.ArraySpace{J,1}} where {Q,J}
-    sum(transpose(conj(f))*g)[1]
+    sum(map(⋅,f,g))
 end
 
-spacescompatible(a::OscLaurent{D,R},b::OscLaurent{D,R}) where {D,R} = a.exp == b.exp
+function ⋅(f::Fun{T},g::Fun{S},s::Function) where {S<:ApproxFun.ArraySpace{Q,1},T<:ApproxFun.ArraySpace{J,1}} where {Q,J}
+    sum(s(transpose(conj(f))*g))[1]
+end
 
+function ⋅(f::Fun{T},g::Fun{S},s) where {S,T}
+    sum(s(conj(f)*g))
+end
+
+function ⋅(f::Fun{T},g::Fun{S}) where {S,T}
+    sum(conj(f)*g)
+end
+
+function ⋅(f::Array{T,1},g::Array{S,1}) where {S<:Fun,T<:Fun}
+    @time sum(map(⋅,f,g))
+end
+
+function condense(f::Fun)
+    f
+end
+
+function condense(f::Array{T,1}) where T<:Fun
+    map(condense,f)
+end
+
+function condense(f::Fun{T}) where {T <: SumSpace}
+    sum(components(f))
+end
+
+function condense(f::Fun{T}) where {T <: ArraySpace{S}} where {S<:SumSpace}
+    Fun(map( x -> sum(components(x)), Array(f)))
+end
+
+function condense(f::Fun{T}) where {T <: ArraySpace{S}} where {S<:Space}
+    f
+end
+
+function chop(f::Array{T,1}) where T<:Fun
+    map(chop,f)
+end
+
+function chop!(f::Array{T,1}) where T<:Fun
+    map(chop!,f)
+end
+
+spacescompatible(a::OscLaurent{D,R},b::OscLaurent{D,R}) where {D,R} = a.exp ≈ b.exp
 fourierpoints(n::Integer) = fourierpoints(Float64,n)
 fourierpoints(::Type{T},n::Integer) where {T<:Number} = convert(T,π)*collect(0:2:2n-2)/n
 
@@ -124,8 +210,6 @@ function fsum(x::AbstractVector{T}) where T
     x[1] + sum(x[2:2:end].*((-1)^j for j in 1:length(x[2:2:end]))) + sum(x[3:2:end].*((-1)^j for j in 1:length(x[3:2:end])))
 end
 
-c_s!(x) = 1# do nothing %x[1] = fsum(x) # normalize
-ic_s!(x) = 1# do nothing x[1] = x[1] - (fsum(x)-x[1])
 
 struct plan_mfft!
     P
@@ -134,7 +218,6 @@ plan_mfft!(x::AbstractVector{T}) where T = plan_mfft!(plan_fft!(x))
 
 function *(tr::plan_mfft!,x::AbstractVector{T}) where T
     tr.P*x
-    c_s!(x)
     return x
 end
 
@@ -144,7 +227,6 @@ end
 plan_mifft!(x::AbstractVector{T}) where T = plan_mifft!(plan_ifft!(x))
 
 function *(tr::plan_mifft!,x::AbstractVector{T}) where T
-    ic_s!(x)
     return tr.P*x
 end
 
@@ -168,13 +250,11 @@ function *(P::TransformPlan{T,OscLaurent{D,R},true},vals::AbstractVector{T}) whe
     #vals = [zero_nan(j) for j in vals]
     vals = lmul!(inv(convert(T,n)),P.plan*vals)
     reverseeven!(interlace!(vals,1))
-    c_s!(vals)
     vals
 end
 
 function *(P::ITransformPlan{T,OscLaurent{D,R},true},cfs::AbstractVector{T}) where {T,D,R}
     n = length(cfs)
-    ic_s!(cfs)
     reverseeven!(cfs)
     cfs[:]=[cfs[1:2:end];cfs[2:2:end]]  # TODO: deinterlace!
     lmul!(n,cfs)
