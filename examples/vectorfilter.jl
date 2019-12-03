@@ -1,8 +1,8 @@
 using ApproxFunOrthogonalPolynomials, ApproxFunRational,
  ApproxFunFourier, ApproxFunBase, ApproxFun, AbstractIterativeSolvers,
- Plots, Profile
+ Plots
 ### Vector case
-tol = 1.e-5
+tol = 1.e-9
 Ds1 = 0.5
 Ds2 = 1.
 Δs = Ds2-Ds1
@@ -47,19 +47,23 @@ h = map(SumFun,[b1,b2])
 simp(f) = combine!(chop!(f,tol))
 inner(a,b) = ⋅(simp(a),simp(b))
 
-# function op(x::Array{T,1}) where T<:SumFun
-#     println("Apply Cauchy:")
-#     @time y = 𝓒*x
-#     println("Apply G:")
-#     @time y = G*y
-#     println("Subtract:")
-#     @time y = simp(x - y)
-#     return y
-# end
+function op(x::Array{T,1}) where T<:SumFun
+    println("Apply Cauchy:")
+    @time y = 𝓒*x
+    println("Apply G:")
+    @time y = G*y
+    println("Subtract:")
+    @time y = simp(x - y)
+    return y
+end
 
 si_op = x -> simp( x - G*(𝓒*x))
-out = GMRES(si_op,h,inner,10*tol,30,simp)
+out = GMRES_verbose(si_op,h,inner,10*tol,30,simp)
 u = sum([out[2][i]*out[1][i] for i=1:length(out[2])])
+
+si_op(out[1][end])
+
+
 
 𝓕 = FourierTransform(-1.0)
 U = 𝓕*u
@@ -68,7 +72,7 @@ x = 0:.01:10
 y1 = real(map(U[1],x))
 y2 = real(map(U[2],x))
 
-for i = 1:length(y1)
+for i = 1:length(y1)-1
     if isinf(y1[i])
         y1[i] = y1[i+1]
     end
@@ -79,5 +83,3 @@ end
 
 plot(x,y1)
 plot!(x,y2)
-
-y1
