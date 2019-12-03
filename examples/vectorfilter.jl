@@ -1,6 +1,4 @@
-using ApproxFunOrthogonalPolynomials, ApproxFunRational,
- ApproxFunFourier, ApproxFunBase, ApproxFun, AbstractIterativeSolvers,
- Plots
+using  ApproxFunRational, AbstractIterativeSolvers
 ### Vector case
 tol = 1.e-9
 Ds1 = 0.5
@@ -53,12 +51,18 @@ function op(x::Array{T,1}) where T<:SumFun
     println("Apply G:")
     @time y = G*y
     println("Subtract:")
-    @time y = simp(x - y)
+    @time y = (x - y)
     return y
 end
 
-si_op = x -> simp( x - G*(𝓒*x))
-out = GMRES_verbose(si_op,h,inner,10*tol,30,simp)
+sop = x -> ( x - G*(𝓒*x))
+out = GMRES(op,h,⋅,10*tol,30,simp)
+
+
+
+
+
+
 u = sum([out[2][i]*out[1][i] for i=1:length(out[2])])
 
 si_op(out[1][end])

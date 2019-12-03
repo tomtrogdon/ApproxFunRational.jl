@@ -1,4 +1,4 @@
-mutable struct SumFun# OscLaurent{D<:SPeriodicLine,R}?
+mutable struct SumFun <: Function# OscLaurent{D<:SPeriodicLine,R}?
     funs::Vector{Fun}
 end
 
@@ -59,3 +59,4 @@ chop!(f::SumFun,tol::Float64) = SumFun(map(x -> chop!(x,tol),f.funs))
 chop!(f::Array,tol::Float64) = map(x -> chop!(x,tol),f)
 
 SumFun(f::Fun{T}) where T<: SumSpace = SumFun(components(f))
+copy(f::SumFun) = SumFun(copy(f.funs))
