@@ -27,7 +27,7 @@ function LagSeries_old(z::Float64,x::AbstractVector{T},cfs::AbstractVector{S}) w
   return sum
 end
 
-function LagSeries(z::Float64,x::AbstractVector{T},cfs::AbstractVector{S}) where {T,S} # need to investigate stability
+function LagSeries(z::Float64,x::Vector{Complex{Float64}},cfs::Vector{Complex{Float64}}) # need to investigate stability
   j = length(cfs)
   #c = Lag(j,z) # c[2] gives L_0^(1), c[i] gives L_{i-2}^(1)
   #v0 = x
@@ -53,13 +53,13 @@ function LagSeries(z::Float64,x::AbstractVector{T},cfs::AbstractVector{S}) where
   return sum
 end
 
-function Res(j::Int64,α::Float64,β::Float64,z::AbstractVector{T}) where T<:Number
+function Res(j::Int64,α::Float64,β::Float64,z::Vector{Complex{Float64}})
   x = -2im*sign(j)*β./(z.+1im*sign(j)*β)
   y = -2*sign(j)*α*β
   return -LagSeries(abs(j),y,x)
 end
 
-function Res(j::Integer,α::Float64,β::Float64,z::AbstractVector{T},cfs::AbstractVector{S}) where {T<:Number,S<:Number}
+function Res(j::Integer,α::Float64,β::Float64,z::Vector{Float64},cfs::Vector{Complex{Float64}})
   x = -2im*sign(j)*β./(z.+1im*sign(j)*β)
   y = -2*sign(j)*α*β
   return -LagSeries(y,x,cfs)
@@ -73,16 +73,20 @@ function CauchyPNO(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}# returns the non-osc
       b[[1;2:2:end]] = zeros(typeof(f.coefficients[1]),length(b[[1;2:2:end]])) # zero positive
       b[1] = -fsum(b)
       return Fun(sp,b)
-    elseif α < 0.
+    elseif α < 0. && length(f.coefficients) >= 3
       #m = length(f.coefficients[3:2:end])
       #c = Res(m,α,domain(space(f)).L,points(f))
       return Fun(sp,ApproxFun.transform(sp,-Res(1,α,domain(space(f)).L,points(f),f.coefficients[3:2:end])))
       #return Fun(sp,ApproxFun.transform(sp,-c*([(-1)^i for i = 1:m].*f.coefficients[3:2:end])))
-    else
+    elseif α <0.
+      return Fun(sp,[0.0im,0.0im])
+    elseif length(f.coefficients) >= 2
       #m = length(f.coefficients[2:2:end])
       #c = Res(-m,α,domain(space(f)).L,points(f))
       return Fun(sp,ApproxFun.transform(sp,Res(-1,α,domain(space(f)).L,points(f),f.coefficients[2:2:end])))
       #return Fun(sp,ApproxFun.transform(sp,c*([(-1)^i for i = 1:m].*f.coefficients[2:2:end])))
+    else
+      return Fun(sp,[0.0im])
     end
 end
 
@@ -95,6 +99,15 @@ function CauchyP(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
   end
 end
 
+function CauchyP_SumFun(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
+  α = space(f).exp
+  if α <= 0.
+    return SumFun(CauchyPNO(f))
+  else
+    return SumFun([CauchyPNO(f),f])
+  end
+end
+
 function CauchyM(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
   α = space(f).exp
   if α >= 0.
@@ -104,6 +117,14 @@ function CauchyM(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
   end
 end
 
+function CauchyM_SumFun(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
+  α = space(f).exp
+  if α >= 0.
+    return SumFun(CauchyMNO(f))
+  else
+    return SumFun([CauchyMNO(f),-f])
+  end
+end
 
 function CauchyMNO(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}# returns the non-oscillatory portion
     α = space(f).exp
@@ -113,16 +134,20 @@ function CauchyMNO(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}# returns the non-osc
       b[[1;3:2:end]] = zeros(typeof(f.coefficients[1]),length(b[[1;3:2:end]])) # zero positive
       b[1] = -fsum(b)
       return Fun(sp,b)
-    elseif α < 0.
+    elseif α < 0. && length(f.coefficients) >= 3
       #m = length(f.coefficients[3:2:end])
       #c = Res(m,α,domain(space(f)).L,points(f))
       #return Fun(sp,ApproxFun.transform(sp,-c*([(-1)^i for i = 1:m].*f.coefficients[3:2:end])))
       return Fun(sp,ApproxFun.transform(sp,-Res(1,α,domain(space(f)).L,points(f),f.coefficients[3:2:end])))
-    else
+    elseif α < 0.
+      return Fun(sp,[0.0im,0.0im])
+    elseif length(f.coefficients) >= 2
       #m = length(f.coefficients[2:2:end])
       #c = Res(-m,α,domain(space(f)).L,points(f))
       #return Fun(sp,ApproxFun.transform(sp,c*([(-1)^i for i = 1:m].*f.coefficients[2:2:end])))
       return Fun(sp,ApproxFun.transform(sp,Res(-1,α,domain(space(f)).L,points(f),f.coefficients[2:2:end])))
+    else
+      return Fun(sp,[0.0im])
     end
 end
 
@@ -226,6 +251,14 @@ struct Cauchy <: AbstractCauchyOperator
   pm::Integer
 end
 
-*(C::AbstractCauchyOperator,F::Fun) = (C.pm == 1) ? CauchyP(F) : CauchyM(F)
+struct EvaluateCauchy <: AbstractCauchyOperator
+  pm::Integer
+  x::Complex{Float64}
+end
 
-*(C::AbstractCauchyOperator,F::Array{T,1}) where T<:Fun = map(x -> C*x, F)
+Cauchy(pm,x::Complex{Float64}) = EvaluateCauchy(pm,x)
+Cauchy(pm,x::Float64) = Cauchy(pm,convert(Complex{Float64},x))
+
+*(C::Cauchy,F::Fun) = (C.pm == 1) ? CauchyP(F) : CauchyM(F)
+*(C::Cauchy,F::SumFun) = (C.pm == 1) ? +(map(CauchyP_SumFun,F.funs)...) : +(map(CauchyM_SumFun,F.funs)...)
+*(C::Cauchy,F::Array{T,1}) where T = map(x -> C*x, F)

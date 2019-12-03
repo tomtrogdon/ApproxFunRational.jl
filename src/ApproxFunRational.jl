@@ -9,7 +9,7 @@ using Base, ApproxFun, ApproxFunBase, ApproxFunFourier, Reexport, FFTW, LinearAl
 import ApproxFunBase: normalize!, flipsign, FiniteRange, Fun, MatrixFun, UnsetSpace, VFun, RowVector,
                 UnivariateSpace, AmbiguousSpace, SumSpace, SubSpace, WeightSpace, NoSpace, Space,
                 HeavisideSpace, PointSpace, dimension, colstop, israggedbelow, rowstop,
-                IntervalOrSegment, RaggedMatrix, AlmostBandedMatrix, chop,
+                IntervalOrSegment, RaggedMatrix, AlmostBandedMatrix, chop, chop!,
                 AnyDomain, ZeroSpace, ArraySpace, TrivialInterlacer, BlockInterlacer,
                 AbstractTransformPlan, TransformPlan, ITransformPlan,
                 ConcreteConversion, ConcreteMultiplication, ConcreteDerivative, ConcreteIntegral, CalculusOperator,
@@ -63,13 +63,13 @@ import Base: values, convert, getindex, setindex!, *, +, -, ==, <, <=, >, |, !, 
 
 import ApproxFunOrthogonalPolynomials: Laguerre
 
-export PeriodicLine, OscLaurent, OscConstantSpace, zai, cai,
-condense, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform#, spacescompatible
+import LinearAlgebra: ⋅
+
+export PeriodicLine, chop!, OscLaurent, SumFun, OscConstantSpace, zai, cai, condense, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform, combine!#, spacescompatible
 #include("Domains/Domains.jl")
 
 # Override the evaluation of Piecewise Funs
 evaluate(f::Fun{T},x) where {T <: PiecewiseSpace{S}} where S = sum(map(F -> F(x),components(f)))
-
 
 struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
     domain::D
@@ -83,6 +83,8 @@ OscLaurent(d::PeriodicLine) = OscLaurent(d,0.)
 OscLaurent(α::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,1.),α)
 OscLaurent(α::Float64,L::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,L),α)
 OscLaurent() = OscLaurent(PeriodicLine())
+
+include("SumFun.jl")
 
 struct OscConstantSpace{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
     domain::D
@@ -134,6 +136,18 @@ function *(A::Array{T,2},b::Array{S,1})  where {T<:Fun,S<:Fun}
     c
 end
 
+function *(A::Array{T,2},b::Array{S,1})  where {T<:SumFun,S<:SumFun}
+    c = [];
+    for i = 1:size(A)[1]
+        sum = A[i,1]*b[1]
+        for j = 2:size(A)[2]
+            sum = sum + A[i,j]*b[j]
+        end
+        append!(c,[sum])
+    end
+    c
+end
+
 spacescompatible(A::OscConstantSpace{D,R},B::OscLaurent{D,R})  where {D,R} = false
 spacescompatible(B::OscLaurent{D,R},A::OscConstantSpace{D,R}) where {D,R} = A.exp ≈ B.exp
 spacescompatible(B::OscConstantSpace{D,R},A::OscConstantSpace{D,R}) where {D,R} = A.exp ≈ B.exp
@@ -167,8 +181,20 @@ function ⋅(f::Fun{T},g::Fun{S}) where {S,T}
     sum(conj(f)*g)
 end
 
+function ⋅(f::SumFun ,g::SumFun)
+    sum(conj(f)*g)
+end
+
+#function ⋅(f::SumFun ,g::SumFun)
+#    sum(conj(f)*g)
+#end
+
+function ⋅(f::Array{T,1},g::Array{S,1}) where {S<:SumFun,T<:SumFun}
+    sum(sum(map(*,conj(f),g)))
+end
+
 function ⋅(f::Array{T,1},g::Array{S,1}) where {S<:Fun,T<:Fun}
-    @time sum(map(⋅,f,g))
+    sum(map(⋅,f,g))
 end
 
 function condense(f::Fun)
