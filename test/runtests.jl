@@ -1,7 +1,7 @@
 using ApproxFunRational, ApproxFunFourier, ApproxFunBase, ApproxFun
 using Test
 
-## TODO: test inner product
+## TODO: Test SumFuns
 
 @testset "ApproxFunRational.jl: Fourier transform" begin
     f = x -> 1. + (x+x^2)*exp(-x^2+1im*x^2)

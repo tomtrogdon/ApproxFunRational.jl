@@ -1,8 +1,6 @@
-using ApproxFunOrthogonalPolynomials, ApproxFunRational,
- ApproxFunFourier, ApproxFunBase, ApproxFun, AbstractIterativeSolvers,
- Plots, Profile, LinearAlgebra
+using  ApproxFunRational, AbstractIterativeSolvers
 ### Vector case
-tol = 1.e-5
+tol = 1.e-9
 Ds1 = 0.5
 Ds2 = 1.
 Δs = Ds2-Ds1
@@ -35,65 +33,50 @@ H[1,1] = copy(a)
 H[2,2] = copy(a)
 H[1,2] = copy(b)
 H[2,1] = copy(bt)
-G = copy(H)
+G = map(SumFun,copy(H))
 
 # Set up right-hand side
 b1 = Pss*Fun(1.,OscLaurent(- D + Ds1,L))
 b2 = Pss*Fun(1.,OscLaurent(- D + Ds2,L))
-h = [b1,b2]
+h = map(SumFun,[b1,b2])
 
 𝓒 = Cauchy(-1)
 𝓢 = Cauchy(1)
-simp(f::Fun) = chop(condense(f),tol)
-simp(F::Array{T,1}) where T <: Fun = map(simp,F)
+simp(f) = combine!(chop!(f,tol))
 inner(a,b) = ⋅(simp(a),simp(b))
 
-function op(x::Array{T,1}) where T<:Fun{S} where S<:ApproxFun.SumSpace
-    println("Apply Cauchy")
+function op(x::Array{T,1}) where T<:SumFun
+    println("Apply Cauchy:")
     @time y = 𝓒*x
-    println("Apply G")
-    #@time y[1] = G[1,1]*y[1] + G[1,2]*y[2]
-    #@time y[2] = G[2,1]*y[1] + G[2,2]*y[2]
+    println("Apply G:")
     @time y = G*y
-    println("Subtract")
-    @time y = x - y
+    println("Subtract:")
+    @time y = (x - y)
     return y
 end
 
-function op(x::Array{T,1}) where T<:Fun
-    println("Apply Cauchy")
-    @time y = 𝓒*x
-    println("Apply G")
-    #@time y[1] = G[1,1]*y[1] + G[1,2]*y[2]
-    #@time y[2] = G[2,1]*y[1] + G[2,2]*y[2]
-    @time y = G*y
-    println("Subtract")
-    @time y = x - y
-    return y
-end
-
-v = h
-v = op(v);
-
-@time transpose(v)*v
-@time components(v)[1]*components(v)[1] + components(v)[2]*components(v)[2]
+sop = x -> ( x - G*(𝓒*x))
+out = GMRES(op,h,⋅,10*tol,30,simp)
 
 
-sum(f1)(.1)
-f2(.1)
-#op = x -> simplify( x - G*(𝓒*x))
-out = GMRES(op,h,inner,1e-6,40,simp)
+
+
+
+
 u = sum([out[2][i]*out[1][i] for i=1:length(out[2])])
-u = simplify(u)
 
-𝓕 = FourierTransform(1.0)
-U = map( x->𝓕*x,Array(u))
+si_op(out[1][end])
+
+
+
+𝓕 = FourierTransform(-1.0)
+U = 𝓕*u
 
 x = 0:.01:10
 y1 = real(map(U[1],x))
 y2 = real(map(U[2],x))
 
-for i = 1:length(y1)
+for i = 1:length(y1)-1
     if isinf(y1[i])
         y1[i] = y1[i+1]
     end
@@ -104,5 +87,3 @@ end
 
 plot(x,y1)
 plot!(x,y2)
-
-y1
