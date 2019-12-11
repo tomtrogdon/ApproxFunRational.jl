@@ -15,9 +15,9 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 
 [compat]
 ApproxFun = ">=0.11.8, ^1"
-ApproxFunOrthogonalPolynomials = "1>=0.2.5, ^1"
-ApproxFunBase = "1>=0.2, ^1"
-ApproxFunFourier = "1>=0.1, ^1"
+ApproxFunOrthogonalPolynomials = ">=0.2.5, ^1"
+ApproxFunBase = ">=0.2, ^1"
+ApproxFunFourier = ">=0.1, ^1"
 FFTW = "0.3, 1"
 Reexport = "0.2"
 julia = "1"
