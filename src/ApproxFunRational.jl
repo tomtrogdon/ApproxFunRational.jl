@@ -123,6 +123,21 @@ function *(f::Fun{OscLaurent{D,R}},g::Fun{OscLaurent{D,R}})  where {D,R}
     Fun(sp,ApproxFun.transform(sp,values(pad(f,m)).*values(pad(g,m))))
 end
 
+function *(f::Fun{OscConstantSpace{D,R}},g::Fun{OscLaurent{D,R}})  where {D,R}
+    sp = OscLaurent(f.space.domain,f.space.exp+g.space.exp)
+    #m = maximum([length(f.coefficients),length(g.coefficients)])
+    #m = length(f.coefficients) + length(g.coefficients)
+    Fun(sp,f.coefficients[1]*g.coefficients)
+end
+
+function *(f::Fun{OscConstantSpace{D,R}},g::Fun{OscConstantSpace{DD,R}})  where {D,DD,R}
+    sp = OscConstantSpace(f.space.domain,f.space.exp+g.space.exp)
+    #m = maximum([length(f.coefficients),length(g.coefficients)])
+    #m = length(f.coefficients) + length(g.coefficients)
+    Fun(sp,f.coefficients[1]*g.coefficients[1])
+end
+
+
 evaluate(f::Fun{OscConstantSpace{D,R}},x::Float64) where {D,R} = f.coefficients[1]*exp(1im*f.space.exp*x)
 function *(A::Array{T,2},b::Array{S,1})  where {T<:Fun,S<:Fun}
     c = [];

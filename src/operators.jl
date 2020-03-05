@@ -176,7 +176,6 @@ FourierTransform(k) = FourierTransform(SFourierTransform(k),δFourierTransform(k
 *(F::AbstractFourierTransform,f::SumFun) = +(map(x -> SumFun(F*x),f.funs)...)
 *(F::AbstractFourierTransform,f::Array{T}) where T = map(x -> F*x,f)
 
-
 # BEGIN: FourierTransform of OscLaurent space
 
 SFourierTransform(sp::OscLaurent,k) = ConcreteSFourierTransform(sp,k)
@@ -315,7 +314,7 @@ function getindex(D::ConcreteSFourierTransform{S,OT,T},k::Integer,j::Integer) wh
     if k > 1 && k != 2j + σ#(ang ≈ 0.0 ? 1 : 0)
         return zero(T)
     elseif k == 1
-        return -1/(4*π*L*(-1)^(j+δ))
+        return -1/(4*π*L*(-1)^(δ))
     else
         return 1/(4*π*L*(-1)^(j+δ))
     end
