@@ -73,15 +73,20 @@ evaluate(f::Fun{T},x) where {T <: PiecewiseSpace{S}} where S = sum(map(F -> F(x)
 
 struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
     domain::D
-    exp::Float64
+    exp::R
     OscLaurent{D,R}(d,ex) where {D,R} = new{D,R}(d,ex)
     OscLaurent{D,R}(d) where {D,R} = new{D,R}(d,0.)
     OscLaurent{D,R}() where {D,R} = new{D,R}(D(),0.,0)
 end
-OscLaurent(d::PeriodicLine,exp::Float64) = OscLaurent{typeof(d),complex(prectype(d))}(d,exp)
+OscLaurent(d::PeriodicLine,exp::Float64) = OscLaurent{typeof(d),prectype(d)}(d,exp)
 OscLaurent(d::PeriodicLine) = OscLaurent(d,0.)
 OscLaurent(α::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,1.),α)
 OscLaurent(α::Float64,L::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,L),α)
+
+OscLaurent(d::PeriodicLine,exp::BigFloat) = OscLaurent{typeof(d),prectype(d)}(d,exp)
+OscLaurent(α::BigFloat) = OscLaurent(PeriodicLine{false,BigFloat}(0.,1.),α)
+OscLaurent(α::BigFloat,L::BigFloat) = OscLaurent(PeriodicLine{false,BigFloat}(0.,L),α)
+
 OscLaurent() = OscLaurent(PeriodicLine())
 
 include("SumFun.jl")

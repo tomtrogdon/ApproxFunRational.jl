@@ -1,9 +1,9 @@
 function cai(f,c)
-    return x -> isnan(x) ? c : complex(f(x))
+    return x -> isnan(f(x)) ? c : complex(f(x))
 end
 
 function zai(f)
-    return x -> isnan(x) ? 0.0im : complex(f(x))
+    return x -> isnan(f(x)) ? 0.0im : complex(f(x))
 end
 
 function horner(c::AbstractVector,kr::AbstractRange{Int},x)

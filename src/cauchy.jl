@@ -53,6 +53,32 @@ function LagSeries(z::Float64,x::Vector{Complex{Float64}},cfs::Vector{Complex{Fl
   return sum
 end
 
+function LagSeries(z::BigFloat,x::Vector{Complex{BigFloat}},cfs::Vector{Complex{BigFloat}}) # need to investigate stability
+  j = length(cfs)
+  #c = Lag(j,z) # c[2] gives L_0^(1), c[i] gives L_{i-2}^(1)
+  #v0 = x
+  #out = zeros(Complex{Float64},length(x))
+  c0 = 0.
+  c1 = exp(-z/2) # c[2]
+  out = x*c1
+  k = 0
+  pm = -1
+  sum = (pm*cfs[1])*out
+  @inbounds for i = 2:j
+    pm = pm*(-1)
+    c2 = (2*k+2-z)*c1/(k+1) - c0 # c2 = c[i + 1]
+    #out = (1.0 .+ x).*out .+ x*(c2-c1)
+    out .*= (1.0 .+ x)
+    out .+= x*(c2-c1)
+    #@inbounds sum = sum + (pm*cfs[i])*out
+    axpy!(pm*cfs[i],out,sum)
+    k += 1
+    c0 = c1
+    c1 = c2
+  end
+  return sum
+end
+
 function Res(j::Int64,α::Float64,β::Float64,z::Vector{Complex{Float64}})
   x = -2im*sign(j)*β./(z.+1im*sign(j)*β)
   y = -2*sign(j)*α*β
@@ -63,6 +89,37 @@ function Res(j::Integer,α::Float64,β::Float64,z::Vector{Float64},cfs::Vector{C
   x = -2im*sign(j)*β./(z.+1im*sign(j)*β)
   y = -2*sign(j)*α*β
   return -LagSeries(y,x,cfs)
+end
+
+function Res(j::Integer,α::BigFloat,β::BigFloat,z::Vector{Complex{BigFloat}},cfs::Vector{Complex{BigFloat}})
+  x = -2im*sign(j)*β./(z.+1im*sign(j)*β)
+  y = -2*sign(j)*α*β
+  return -LagSeries(y,x,cfs)
+end
+
+function CauchyPNO(f::Fun{OscLaurent{DD,RR}}) where {DD,RR <: BigFloat}# returns the non-oscillatory portion, assumes decay
+    α = space(f).exp
+    sp = OscLaurent(domain(space(f)),0.)
+    if α == 0.
+      b = copy(f.coefficients)
+      b[[1;2:2:end]] = zeros(typeof(f.coefficients[1]),length(b[[1;2:2:end]])) # zero positive
+      b[1] = -fsum(b)
+      return Fun(sp,b)
+    elseif α < 0. && length(f.coefficients) >= 3
+      #m = length(f.coefficients[3:2:end])
+      #c = Res(m,α,domain(space(f)).L,points(f))
+      return Fun(sp,ApproxFun.transform(sp,-Res(1,α,BigFloat(domain(space(f)).L),points(f),f.coefficients[3:2:end])))
+      #return Fun(sp,ApproxFun.transform(sp,-c*([(-1)^i for i = 1:m].*f.coefficients[3:2:end])))
+    elseif α <0.
+      return Fun(sp,[0.0im,0.0im])
+    elseif length(f.coefficients) >= 2
+      #m = length(f.coefficients[2:2:end])
+      #c = Res(-m,α,domain(space(f)).L,points(f))
+      return Fun(sp,ApproxFun.transform(sp,Res(-1,α,BigFloat(domain(space(f)).L),points(f),f.coefficients[2:2:end])))
+      #return Fun(sp,ApproxFun.transform(sp,c*([(-1)^i for i = 1:m].*f.coefficients[2:2:end])))
+    else
+      return Fun(sp,[0.0im])
+    end
 end
 
 function CauchyPNO(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}# returns the non-oscillatory portion, assumes decay
@@ -126,6 +183,32 @@ function CauchyM_SumFun(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
   end
 end
 
+function CauchyMNO(f::Fun{OscLaurent{DD,RR}}) where {DD,RR <: BigFloat}# returns the non-oscillatory portion
+    α = space(f).exp
+    sp = OscLaurent(domain(space(f)),0.)
+    if α == 0.
+      b = -copy(f.coefficients)
+      b[[1;3:2:end]] = zeros(typeof(f.coefficients[1]),length(b[[1;3:2:end]])) # zero positive
+      b[1] = -fsum(b)
+      return Fun(sp,b)
+    elseif α < 0. && length(f.coefficients) >= 3
+      #m = length(f.coefficients[3:2:end])
+      #c = Res(m,α,domain(space(f)).L,points(f))
+      #return Fun(sp,ApproxFun.transform(sp,-c*([(-1)^i for i = 1:m].*f.coefficients[3:2:end])))
+      return Fun(sp,ApproxFun.transform(sp,-Res(1,α,BigFloat(domain(space(f)).L),points(f),f.coefficients[3:2:end])))
+    elseif α < 0.
+      return Fun(sp,[0.0im,0.0im])
+    elseif length(f.coefficients) >= 2
+      #m = length(f.coefficients[2:2:end])
+      #c = Res(-m,α,domain(space(f)).L,points(f))
+      #return Fun(sp,ApproxFun.transform(sp,c*([(-1)^i for i = 1:m].*f.coefficients[2:2:end])))
+      return Fun(sp,ApproxFun.transform(sp,Res(-1,α,BigFloat(domain(space(f)).L),points(f),f.coefficients[2:2:end])))
+    else
+      return Fun(sp,[0.0im])
+    end
+end
+
+
 function CauchyMNO(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}# returns the non-oscillatory portion
     α = space(f).exp
     sp = OscLaurent(domain(space(f)),0.)
@@ -150,6 +233,8 @@ function CauchyMNO(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}# returns the non-osc
       return Fun(sp,[0.0im])
     end
 end
+
+
 
 for cauchy in (:CauchyP,:CauchyM)
   @eval begin
