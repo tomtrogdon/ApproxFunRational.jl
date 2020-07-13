@@ -43,14 +43,10 @@ function mob_derivative_getindex(d::PeriodicLine,m,j::Integer,k::Integer)
     end
 end
 
-getindex(D::ConcreteDerivative{OscLaurent{DD,RR},OT,T},k::Integer,j::Integer) where {DD,RR,OT,T} =
-convert(T,(k == j ? domainspace(D).exp*1im : 0.) + mob_derivative_getindex(domain(D),D.order,k,j))
+getindex(D::ConcreteDerivative{OscLaurent{DD,RR},OT,T},k::Integer,j::Integer) where {DD,RR,OT,T} = convert(T,(k == j ? domainspace(D).exp*1im : 0.) + mob_derivative_getindex(domain(D),D.order,k,j))
 
 ## Multiplication, same as Laurent
 Multiplication(f::Fun{OscLaurent{DD,RR}},sp::OscLaurent{DD,RR}) where {DD,RR} = ConcreteMultiplication(cfstype(f),f,sp)
-
-Multiplication(f::Fun{OscLaurent{DD1,RR1}},sp::OscLaurent{DD2,RR2}) where {DD1,RR1,DD2,RR2} = ConcreteMultiplication(cfstype(f),f,sp)
-
 
 function laurent_getindex(negative::AbstractVector{T},nonnegative::AbstractVector{T},k::Integer,j::Integer) where T
     # switch to double-infinite indices
@@ -85,7 +81,7 @@ end
 
 # old code for testing
 function fouriertransform(f::Fun{T}) where T <: OscLaurent
-    α = f.space.exp
+    α = f.space.exp |> real
     L = f.space.domain.L
     sp1 = Laguerre(1.0,Ray(α,0.0,1/(2.0*L),true))
     sp2 = Laguerre(1.0,Ray(α,π,1/(2.0*L),true))
@@ -203,11 +199,11 @@ choosedomainspace(M::FourierOperator{UnsetSpace},sp::Space) =
     iswrapper(M) ? choosedomainspace(M.op,sp) : sp
 
 function rangespace(D::ConcreteSFourierTransform{S,OT,T}) where {S<:OscLaurent,OT,T}
-    α = D.space.exp/D.sign
+    α = D.space.exp/D.sign |> real
     L = D.space.domain.L*abs(D.sign)
     sp1 = Laguerre(1.0,Ray(α,0.0,1/(2.0*L),true))
     sp2 = Laguerre(1.0,Ray(α,π,1/(2.0*L),true))
-    sp0 = DiracSpace(D.space.exp/D.sign)
+    sp0 = DiracSpace(α)
     if D.sign > 0.
         PiecewiseSpace(sp0,LaguerreWeight(0.0,0.5,sp2),LaguerreWeight(0.0,0.5,sp1))
     else
@@ -216,11 +212,11 @@ function rangespace(D::ConcreteSFourierTransform{S,OT,T}) where {S<:OscLaurent,O
 end
 
 function rangespace(D::ConcreteδFourierTransform{S,OT,T}) where {S<:OscLaurent,OT,T}
-    α = D.space.exp/D.sign
+    α = D.space.exp/D.sign |> real
     L = D.space.domain.L*abs(D.sign)
     sp1 = Laguerre(1.0,Ray(α,0.0,1/(2.0*L),true))
     sp2 = Laguerre(1.0,Ray(α,π,1/(2.0*L),true))
-    sp0 = DiracSpace(D.space.exp/D.sign)
+    sp0 = DiracSpace(α)
     if D.sign > 0.
         PiecewiseSpace(sp0,LaguerreWeight(0.0,0.5,sp2),LaguerreWeight(0.0,0.5,sp1))
     else
@@ -262,14 +258,14 @@ SFourierTransform(sp::DiracSpace,k) = ConcreteSFourierTransform(sp,k)
 
 function rangespace(D::ConcreteδFourierTransform{S,OT,T}) where {S<:DiracSpace,OT,T}
     @assert length(D.space.points) == 1
-    α = -D.space.points[1]*D.sign
+    α = -D.space.points[1]*D.sign |> real
     L = 1.0
     OscConstantSpace(α,L)
 end
 
 function rangespace(D::ConcreteSFourierTransform{S,OT,T}) where {S<:DiracSpace,OT,T}
     @assert length(D.space.points) == 1
-    α = -D.space.points[1]*D.sign
+    α = -D.space.points[1]*D.sign |> real
     L = 1.0
     OscConstantSpace(α,L)
 end
@@ -298,7 +294,7 @@ SFourierTransform(sp::LaguerreWeight,k) = ConcreteSFourierTransform(sp,k)
 function rangespace(D::ConcreteδFourierTransform{S,OT,T}) where {S<:LaguerreWeight,OT,T}
     sp = D.space
     @assert sp.α == 0.0 && sp.L == 0.5
-    α = -sp.space.domain.center*D.sign
+    α = -sp.space.domain.center*D.sign |> real
     L = abs(1/(D.sign*2*sp.space.domain.L))
     OscLaurent(α,L)
 end
@@ -306,7 +302,7 @@ end
 function rangespace(D::ConcreteSFourierTransform{S,OT,T}) where {S<:LaguerreWeight,OT,T}
     sp = D.space
     @assert sp.α == 0.0 && sp.L == 0.5
-    α = -sp.space.domain.center*D.sign
+    α = -sp.space.domain.center*D.sign |> real
     L = abs(1/(D.sign*2*sp.space.domain.L))
     OscLaurent(α,L)
 end

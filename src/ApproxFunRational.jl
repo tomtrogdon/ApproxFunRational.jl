@@ -65,7 +65,7 @@ import ApproxFunOrthogonalPolynomials: Laguerre
 
 import LinearAlgebra: ⋅
 
-export PeriodicLine, chop!, OscLaurent, SumFun, OscConstantSpace, zai, cai, condense, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform, combine!#, spacescompatible
+export PeriodicLine, chop!, OscLaurent, SumFun, OscConstantSpace, zai, cai, condense, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform, combine!, ChopOsc#, spacescompatible
 #include("Domains/Domains.jl")
 
 # Override the evaluation of Piecewise Funs
@@ -78,10 +78,15 @@ struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine
     OscLaurent{D,R}(d) where {D,R} = new{D,R}(d,0.)
     OscLaurent{D,R}() where {D,R} = new{D,R}(D(),0.,0)
 end
-OscLaurent(d::PeriodicLine,exp::Float64) = OscLaurent{typeof(d),prectype(d)}(d,exp)
+OscLaurent(d::PeriodicLine,exp::Float64) = OscLaurent{typeof(d),complex(prectype(d))}(d,exp)
 OscLaurent(d::PeriodicLine) = OscLaurent(d,0.)
-OscLaurent(α::Float64) = OscLaurent(PeriodicLine{false,Complex{Float64}}(0.,1.),α)
-OscLaurent(α::Float64,L::Float64) = OscLaurent(PeriodicLine{false,Complex{Float64}}(0.,L),α)
+OscLaurent(α::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,1.),α)
+OscLaurent(α::Float64,L::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,L),α)
+
+OscLaurent(d::PeriodicLine,exp::Complex{Float64}) = OscLaurent(d,exp |> real)
+OscLaurent(α::Complex{Float64}) = OscLaurent(α |> real )
+OscLaurent(α::Complex{Float64},L::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,L),α |> real)
+
 
 OscLaurent(d::PeriodicLine,exp::BigFloat) = OscLaurent{typeof(d),prectype(d)}(d,exp)
 OscLaurent(α::BigFloat) = OscLaurent(PeriodicLine{false,BigFloat}(0.,1.),α)
@@ -100,8 +105,9 @@ struct OscConstantSpace{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriod
 end
 OscConstantSpace(d::PeriodicLine,exp::Float64) = OscConstantSpace{typeof(d),complex(prectype(d))}(d,exp)
 OscConstantSpace(d::PeriodicLine) = OscConstantSpace(d,0.)
-OscConstantSpace(α::Float64) = OscConstantSpace(PeriodicLine{false,Complex{Float64}}(0.,1.),α)
-OscConstantSpace(α::Float64,L::Float64) = OscConstantSpace(PeriodicLine{false,Complex{Float64}}(0.,L),α)
+OscConstantSpace(α::Float64) = OscConstantSpace(PeriodicLine{false,Float64}(0.,1.),α)
+OscConstantSpace(α::Float64,L::Float64) = OscConstantSpace(PeriodicLine{false,Float64}(0.,L),α)
+
 OscConstantSpace() = OscConstantSpace(PeriodicLine())
 
 maxspace(a::LaguerreWeight,b::LaguerreWeight) =  spacescompatible(a,b) ? a : PiecewiseSpace(a,b)
@@ -122,21 +128,21 @@ bandwidths(C::ConcreteConversion{A,B,T}) where {A<:OscConstantSpace,B<:OscLauren
 Conversion(A::OscConstantSpace,B::OscLaurent) = ConcreteConversion(A::OscConstantSpace,B::OscLaurent)
 
 function *(f::Fun{OscLaurent{D,R}},g::Fun{OscLaurent{D,R}})  where {D,R}
-    sp = OscLaurent(f.space.domain,f.space.exp+g.space.exp)
+    sp = OscLaurent(f.space.domain,f.space.exp+g.space.exp |> real)
     #m = maximum([length(f.coefficients),length(g.coefficients)])
     m = length(f.coefficients) + length(g.coefficients)
     Fun(sp,ApproxFun.transform(sp,values(pad(f,m)).*values(pad(g,m))))
 end
 
 function *(f::Fun{OscConstantSpace{D,R}},g::Fun{OscLaurent{D,R}})  where {D,R}
-    sp = OscLaurent(f.space.domain,f.space.exp+g.space.exp)
+    sp = OscLaurent(f.space.domain,f.space.exp+g.space.exp |> real)
     #m = maximum([length(f.coefficients),length(g.coefficients)])
     #m = length(f.coefficients) + length(g.coefficients)
     Fun(sp,f.coefficients[1]*g.coefficients)
 end
 
 function *(f::Fun{OscConstantSpace{D,R}},g::Fun{OscConstantSpace{DD,R}})  where {D,DD,R}
-    sp = OscConstantSpace(f.space.domain,f.space.exp+g.space.exp)
+    sp = OscConstantSpace(f.space.domain,f.space.exp+g.space.exp |> real)
     #m = maximum([length(f.coefficients),length(g.coefficients)])
     #m = length(f.coefficients) + length(g.coefficients)
     Fun(sp,f.coefficients[1]*g.coefficients[1])

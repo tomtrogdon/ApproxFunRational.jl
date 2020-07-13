@@ -17,7 +17,7 @@ Base.sum(f::Fun{T}) where T <: ArraySpace = map(sum,f)
 
 # Old version, still here for testing
 function sum2(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
-    if space(f).exp == 0.
+    if space(f).exp ≈ 0.
         data = f.coefficients[2:2:end]
         data = data.*(j*(-1)^j for j in 1:length(data))
         s = sum(data)
@@ -45,7 +45,7 @@ function sum2(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
 end
 
 function Base.sum(f::Fun{OscLaurent{DD,RR}}) where {DD,RR <: BigFloat}
-    if space(f).exp == 0
+    if space(f).exp ≈ 0
         s = BigFloat("0")*1im
         o = 1
         j = 0
@@ -74,7 +74,7 @@ function Base.sum(f::Fun{OscLaurent{DD,RR}}) where {DD,RR <: BigFloat}
         #if abs(v.exp) == 0
         #  c = c.*(N(2*m)[2:length(c)+1])
         #end # if v.exp > 0, only negative terms contribute
-        if ex > 0
+        if real(ex) > 0
           #data = f.coefficients[2:2:end]
           j = 2
         else
@@ -99,7 +99,7 @@ function Base.sum(f::Fun{OscLaurent{DD,RR}}) where {DD,RR <: BigFloat}
 end
 
 function Base.sum(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
-    if space(f).exp == 0.
+    if space(f).exp ≈ 0.
         s = 0.0im
         o = 1
         j = 0
@@ -128,7 +128,7 @@ function Base.sum(f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
         #if abs(v.exp) == 0
         #  c = c.*(N(2*m)[2:length(c)+1])
         #end # if v.exp > 0, only negative terms contribute
-        if ex > 0.
+        if real(ex) > 0.
           #data = f.coefficients[2:2:end]
           j = 2
         else
