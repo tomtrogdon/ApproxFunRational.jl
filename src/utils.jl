@@ -90,5 +90,4 @@ function mob_conj(x::AbstractVector{T}) where T <: Number
         y[2:2:end-1] = conj(x[3:2:end-1])
         y[3:2:end-1] = conj(x[2:2:end-1])
     end
-
 end

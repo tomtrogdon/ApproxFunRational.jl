@@ -1,3 +1,13 @@
+## Chop oscillations
+
+function ChopOsc(f::Fun{OscLaurent{DD,RR}},dig) where {DD,RR}
+    sp = f.space
+    α = sp.exp
+    β = round(α,dig)
+    sp2 = OscLaurent(sp.domain,β)
+    Fun(sp2,ApproxFun.transform(sp2,values(f.*exp.(1im*(α-β)*points(f)))))
+end
+
 
 ## Differentiation
 # Only k = 1 for now...

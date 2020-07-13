@@ -80,8 +80,8 @@ struct OscLaurent{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine
 end
 OscLaurent(d::PeriodicLine,exp::Float64) = OscLaurent{typeof(d),prectype(d)}(d,exp)
 OscLaurent(d::PeriodicLine) = OscLaurent(d,0.)
-OscLaurent(α::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,1.),α)
-OscLaurent(α::Float64,L::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,L),α)
+OscLaurent(α::Float64) = OscLaurent(PeriodicLine{false,Complex{Float64}}(0.,1.),α)
+OscLaurent(α::Float64,L::Float64) = OscLaurent(PeriodicLine{false,Complex{Float64}}(0.,L),α)
 
 OscLaurent(d::PeriodicLine,exp::BigFloat) = OscLaurent{typeof(d),prectype(d)}(d,exp)
 OscLaurent(α::BigFloat) = OscLaurent(PeriodicLine{false,BigFloat}(0.,1.),α)
@@ -100,8 +100,8 @@ struct OscConstantSpace{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriod
 end
 OscConstantSpace(d::PeriodicLine,exp::Float64) = OscConstantSpace{typeof(d),complex(prectype(d))}(d,exp)
 OscConstantSpace(d::PeriodicLine) = OscConstantSpace(d,0.)
-OscConstantSpace(α::Float64) = OscConstantSpace(PeriodicLine{false,Float64}(0.,1.),α)
-OscConstantSpace(α::Float64,L::Float64) = OscConstantSpace(PeriodicLine{false,Float64}(0.,L),α)
+OscConstantSpace(α::Float64) = OscConstantSpace(PeriodicLine{false,Complex{Float64}}(0.,1.),α)
+OscConstantSpace(α::Float64,L::Float64) = OscConstantSpace(PeriodicLine{false,Complex{Float64}}(0.,L),α)
 OscConstantSpace() = OscConstantSpace(PeriodicLine())
 
 maxspace(a::LaguerreWeight,b::LaguerreWeight) =  spacescompatible(a,b) ? a : PiecewiseSpace(a,b)
