@@ -344,6 +344,22 @@ end
 Cauchy(pm,x::Complex{Float64}) = EvaluateCauchy(pm,x)
 Cauchy(pm,x::Float64) = Cauchy(pm,convert(Complex{Float64},x))
 
+function *(C::EvaluateCauchy,f::Fun{OscLaurent{DD,RR}}) where {DD,RR}
+    if f.space.exp != 0.0
+      @warn "non-zero exponent, cauchy eval is invalid"
+    end
+    S = f.space
+    zz = mappoint(domain(S),Circle(),C.x)
+    if abs(zz) < 1.0 || (abs(zz) ≈ 1 && C.pm == 1)
+      return horner(f.coefficients,1:2:length(f.coefficients),zz)
+    elseif abs(zz) > 1.0 || (abs(zz) ≈ 1 && C.pm == -1)
+      invz = 1/zz
+      return horner(f.coefficients,2:2:length(f.coefficients),invz)*invz + f.coefficients[1]
+    elseif isnan(zz)
+      return  f.coefficients[1]
+    end
+end
+
 *(C::Cauchy,F::Fun) = (C.pm == 1) ? CauchyP(F) : CauchyM(F)
 *(C::Cauchy,F::SumFun) = (C.pm == 1) ? +(map(CauchyP_SumFun,F.funs)...) : +(map(CauchyM_SumFun,F.funs)...)
 *(C::Cauchy,F::Array{T,1}) where T = map(x -> C*x, F)
