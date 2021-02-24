@@ -65,7 +65,7 @@ import ApproxFunOrthogonalPolynomials: Laguerre
 
 import LinearAlgebra: ⋅
 
-export PeriodicLine, chop!, OscLaurent, SumFun, OscConstantSpace, zai, cai, condense, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform, combine!, ChopOsc#, spacescompatible
+export PeriodicLine, chop!, OscLaurent, OscRational, SumFun, OscConstantSpace, OscStepSpace, zai, cai, condense, Cauchy, CauchyP, CauchyM, ⋅, fouriertransform, FourierTransform, combine!, ChopOsc#, spacescompatible
 #include("Domains/Domains.jl")
 
 # Override the evaluation of Piecewise Funs
@@ -82,17 +82,32 @@ OscLaurent(d::PeriodicLine,exp::Float64) = OscLaurent{typeof(d),complex(prectype
 OscLaurent(d::PeriodicLine) = OscLaurent(d,0.)
 OscLaurent(α::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,1.),α)
 OscLaurent(α::Float64,L::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,L),α)
-
 OscLaurent(d::PeriodicLine,exp::Complex{Float64}) = OscLaurent(d,exp |> real)
 OscLaurent(α::Complex{Float64}) = OscLaurent(α |> real )
 OscLaurent(α::Complex{Float64},L::Float64) = OscLaurent(PeriodicLine{false,Float64}(0.,L),α |> real)
-
-
 OscLaurent(d::PeriodicLine,exp::BigFloat) = OscLaurent{typeof(d),prectype(d)}(d,exp)
 OscLaurent(α::BigFloat) = OscLaurent(PeriodicLine{false,BigFloat}(0.,1.),α)
 OscLaurent(α::BigFloat,L::BigFloat) = OscLaurent(PeriodicLine{false,BigFloat}(0.,L),α)
-
 OscLaurent() = OscLaurent(PeriodicLine())
+
+struct OscRational{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
+    domain::D
+    exp::R
+    OscRational{D,R}(d,ex) where {D,R} = new{D,R}(d,ex)
+    OscRational{D,R}(d) where {D,R} = new{D,R}(d,0.)
+    OscRational{D,R}() where {D,R} = new{D,R}(D(),0.,0)
+end
+OscRational(d::PeriodicLine,exp::Float64) = OscRational{typeof(d),complex(prectype(d))}(d,exp)
+OscRational(d::PeriodicLine) = OscRational(d,0.)
+OscRational(α::Float64) = OscRational(PeriodicLine{false,Float64}(0.,1.),α)
+OscRational(α::Float64,L::Float64) = OscRational(PeriodicLine{false,Float64}(0.,L),α)
+OscRational(d::PeriodicLine,exp::Complex{Float64}) = OscRational(d,exp |> real)
+OscRational(α::Complex{Float64}) = OscRational(α |> real )
+OscRational(α::Complex{Float64},L::Float64) = OscRational(PeriodicLine{false,Float64}(0.,L),α |> real)
+OscRational(d::PeriodicLine,exp::BigFloat) = OscRational{typeof(d),prectype(d)}(d,exp)
+OscRational(α::BigFloat) = OscRational(PeriodicLine{false,BigFloat}(0.,1.),α)
+OscRational(α::BigFloat,L::BigFloat) = OscRational(PeriodicLine{false,BigFloat}(0.,L),α)
+OscRational() = OscRational(PeriodicLine())
 
 include("SumFun.jl")
 
@@ -109,6 +124,9 @@ OscConstantSpace(α::Float64) = OscConstantSpace(PeriodicLine{false,Float64}(0.,
 OscConstantSpace(α::Float64,L::Float64) = OscConstantSpace(PeriodicLine{false,Float64}(0.,L),α)
 
 OscConstantSpace() = OscConstantSpace(PeriodicLine())
+
+
+
 
 maxspace(a::LaguerreWeight,b::LaguerreWeight) =  spacescompatible(a,b) ? a : PiecewiseSpace(a,b)
 maxspace(a::OscLaurent,b::OscConstantSpace) = a
@@ -180,10 +198,56 @@ spacescompatible(B::OscConstantSpace{D,R},A::OscConstantSpace{D,R}) where {D,R} 
 #hasconversion(A::OscConstantSpace,B::OscLaurent) = A.exp == B.exp
 #hasconversion(B::OscLaurent,A::OscConstantSpace) = false
 
+struct OscStepSpace{D<:PeriodicLine,R} <: Space{D,R} # OscLaurent{D<:SPeriodicLine,R}?
+    domain::D
+    exp::Float64
+    OscStepSpace{D,R}(d,ex) where {D,R} = new{D,R}(d,ex)
+    OscStepSpace{D,R}(d) where {D,R} = new{D,R}(d,0.)
+    OscStepSpace{D,R}() where {D,R} = new{D,R}(D(),0.,0)
+end
+OscStepSpace(d::PeriodicLine,exp::Float64) = OscStepSpace{typeof(d),complex(prectype(d))}(d,exp)
+OscStepSpace(d::PeriodicLine) = OscStepSpace(d,0.)
+OscStepSpace(α::Float64) = OscStepSpace(PeriodicLine{false,Float64}(0.,1.),α)
+OscStepSpace(α::Float64,L::Float64) = OscStepSpace(PeriodicLine{false,Float64}(0.,L),α)
+
+OscStepSpace() = OscStepSpace(PeriodicLine())
+
+spacescompatible(B::OscStepSpace{D,R},A::OscLaurent{D,R}) where {D,R} = false
+spacescompatible(A::OscLaurent{D,R},B::OscStepSpace{D,R}) where {D,R} = false
+
+OscLaurent_to_OscRational(sp::OscLaurent{D,R}) where {D,R} = OscRational(sp.domain,sp.exp)
+OscRational_to_OscLaurent(sp::OscRational{D,R}) where {D,R} = OscLaurent(sp.domain,sp.exp)
+
+function coefs_to_OscRational(v::Vector)
+    n = convert(Int64,floor(length(v)/4)+1)
+    os = [-ones(n);ones(n)]
+    ApproxFun.interlace!(os,1)
+    os = [os;os]
+    ApproxFun.interlace!(os,1)
+    return v[2:end].*os[1:length(v)-1]
+end
+
+function coefs_to_OscLaurent(v::Vector)
+    c = sum(v)
+    n = convert(Int64,floor(length(v)/4)+1)
+    os = [-ones(n);ones(n)]
+    ApproxFun.interlace!(os,1)
+    os = [os;os]
+    ApproxFun.interlace!(os,1)
+    return [-c;v[1:end].*os[1:length(v)]]
+end
+
 ## A hack, definitely
 ## There is an issue because if F = Fun(f,OscLaurent(α)) then F != f, typically
 ## If checkpoints could depend on space and domain, this could be fixed easily
 function Fun(f::Function,sp::OscLaurent{D,R}) where {D,R}
+    g = Fun(f,Laurent(sp.domain))
+    n = length(g.coefficients)
+    n = round(Int64,n/length(g(points(g)[1])))+1
+    return Fun(f,sp,n)
+end
+
+function Fun(f::Function,sp::OscRational{D,R}) where {D,R}
     g = Fun(f,Laurent(sp.domain))
     n = length(g.coefficients)
     n = round(Int64,n/length(g(points(g)[1])))+1
@@ -262,7 +326,6 @@ function fsum(x::AbstractVector{T}) where T
     x[1] + sum(x[2:2:end].*((-1)^j for j in 1:length(x[2:2:end]))) + sum(x[3:2:end].*((-1)^j for j in 1:length(x[3:2:end])))
 end
 
-
 struct plan_mfft!
     P
 end
@@ -328,7 +391,8 @@ itransform(::OscLaurent{D,R},cfs,plan) where {D,R} = plan*cfs
 transform(sp::OscLaurent{D,R},vals::AbstractVector) where {D,R} = plan_transform(sp,vals)*vals
 itransform(sp::OscLaurent{D,R},cfs::AbstractVector) where {D,R} = plan_itransform(sp,cfs)*cfs
 
-
+transform(sp::OscRational{D,R},vals::AbstractVector) where {D,R} = coefs_to_OscRational(plan_transform(OscRational_to_OscLaurent(sp),vals)*vals)
+itransform(sp::OscRational{D,R},cfs::AbstractVector) where {D,R} = plan_itransform(OscRational_to_OscLaurent(sp),cfs)*coefs_to_OscLaurent(cfs)
 
 include("utils.jl")
 include("calculus.jl")

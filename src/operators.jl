@@ -2,10 +2,30 @@
 
 function ChopOsc(f::Fun{OscLaurent{DD,RR}},dig) where {DD,RR}
     sp = f.space
-    α = sp.exp
-    β = round(α,dig)
+    α = sp.exp |> real
+    β = round(α,digits = dig)
     sp2 = OscLaurent(sp.domain,β)
-    Fun(sp2,ApproxFun.transform(sp2,values(f.*exp.(1im*(α-β)*points(f)))))
+    Fun(sp2,ApproxFun.transform(sp2,values(f).*exp.(1im*(α-β)*points(f))))
+end
+
+function ChopOsc(f::Fun{OscConstantSpace{DD,RR}},dig) where {DD,RR}
+    sp = f.space
+    α = sp.exp |> real
+    β = round(α,digits = dig)
+    if abs(β - α) ≈ 0.0
+        return f
+    else
+        @warn "Cannot truncate non-trival OscConstant"
+        return f
+    end
+end
+
+function ChopOsc(F::SumFun,dig)
+    if length(F.funs) > 1
+        return +(map(y -> SumFun(ChopOsc(y,dig)),F.funs)...)
+    else
+        return SumFun(ChopOsc(F.funs[1],dig))
+    end
 end
 
 
@@ -14,6 +34,37 @@ end
 Derivative(S::OscLaurent{DD,RR},k::Integer) where {DD,RR} = ConcreteDerivative(S,k)
 bandwidths(D::ConcreteDerivative{OscLaurent{DD,RR}})  where {DD,RR} = (3,3)
 rangespace(D::ConcreteDerivative{S}) where {S<:OscLaurent}=D.space
+
+Derivative(S::OscRational{DD,RR},k::Integer) where {DD,RR} = ConcreteDerivative(S,k)
+bandwidths(D::ConcreteDerivative{OscRational{DD,RR}})  where {DD,RR} = (3,3)
+rangespace(D::ConcreteDerivative{S}) where {S<:OscRational}=D.space
+
+Derivative(S::OscConstantSpace{DD,RR},k::Integer) where {DD,RR} = ConcreteDerivative(S,k)
+bandwidths(D::ConcreteDerivative{OscConstantSpace{DD,RR}})  where {DD,RR} = (1,1)
+rangespace(D::ConcreteDerivative{S}) where {S<:OscConstantSpace}= D.space
+
+Derivative(S::OscStepSpace{DD,RR},k::Integer) where {DD,RR} = ConcreteDerivative(S,k)
+bandwidths(D::ConcreteDerivative{OscStepSpace{DD,RR}})  where {DD,RR} = (2,1)
+rangespace(D::ConcreteDerivative{S}) where {S<:OscStepSpace} = OscLaurent(D.space.domain,D.space.exp)
+
+function const_derivative_getindex(d::PeriodicLine,m,j::Integer,k::Integer)
+    return 0im
+end
+
+function step_derivative_getindex(d::PeriodicLine,m,j::Integer,k::Integer)
+    if k > 1
+        return 0im
+    elseif j == 1
+        #return 1/(2*pi*d.L)
+        return 2.0
+    elseif j == 2 || j == 3
+        #return 1/(4*pi*d.L)
+        return 1.0
+    else
+        return 0im
+    end
+end
+
 function mob_derivative_getindex(d::PeriodicLine,m,j::Integer,k::Integer)
     # j is the row index, i.e. (j,k) not (k,j) as other ApproxFun implementations
     if j == 1 && 2 <= k <= 3
@@ -43,15 +94,66 @@ function mob_derivative_getindex(d::PeriodicLine,m,j::Integer,k::Integer)
     end
 end
 
+function pm_mob_derivative_getindex(d::PeriodicLine,m,j::Integer,k::Integer)
+    # j is the row index, i.e. (j,k) not (k,j) as other ApproxFun implementations
+    if j == 1 && 2 <= k <= 3
+        -(-1)^k*0.5im/d.L
+    elseif iseven(j)
+        l = j÷2
+        if k == j
+            -1.0im*l/d.L
+        elseif k == j+2
+            1.0im*(l+1)/2*1/d.L
+        elseif k == j-2 && j > 2
+            1.0im*(l-1)/2*1/d.L
+        else
+            0.0im
+        end
+    else
+        l = j÷2
+        if k == j
+            1.0im*l/d.L
+        elseif k == j+2
+            -1.0im*(l+1)/2*1/d.L
+        elseif k == j-2 && j > 3
+            -1.0im*(l-1)/2*1/d.L
+        else
+            0.0im
+        end
+    end
+end
+
 getindex(D::ConcreteDerivative{OscLaurent{DD,RR},OT,T},k::Integer,j::Integer) where {DD,RR,OT,T} = convert(T,(k == j ? domainspace(D).exp*1im : 0.) + mob_derivative_getindex(domain(D),D.order,k,j))
+getindex(D::ConcreteDerivative{OscRational{DD,RR},OT,T},k::Integer,j::Integer) where {DD,RR,OT,T} = convert(T,(k == j ? domainspace(D).exp*1im : 0.) + pm_mob_derivative_getindex(domain(D),D.order,k+1,j+1))
+
+
+getindex(D::ConcreteDerivative{OscConstantSpace{DD,RR},OT,T},k::Integer,j::Integer) where {DD,RR,OT,T} = convert(T,(k == j ? domainspace(D).exp*1im : 0.) + const_derivative_getindex(domain(D),D.order,k,j))
+getindex(D::ConcreteDerivative{OscStepSpace{DD,RR},OT,T},k::Integer,j::Integer) where {DD,RR,OT,T} = convert(T,(k == j ? domainspace(D).exp*1im : 0.) + step_derivative_getindex(domain(D),D.order,k,j))
+
 
 ## Multiplication, same as Laurent
 Multiplication(f::Fun{OscLaurent{DD,RR}},sp::OscLaurent{DD,RR}) where {DD,RR} = ConcreteMultiplication(cfstype(f),f,sp)
 
+
+struct ConcreteCachedMultiplication{D<:Space,S<:Space,T} <: Multiplication{D,S,T}
+    f::VFun{D,T}
+    space::S
+    data::Number
+
+    ConcreteCachedMultiplication{D,S,T}(f::Fun{D,T},sp::S,c::Number) where {D,S,T} = new{D,S,T}(f,sp,c)
+end
+
+function ConcreteCachedMultiplication(::Type{V},f::Fun{D,T},sp::Space,c::Number) where {V,D,T}
+    ConcreteCachedMultiplication{D,typeof(sp),V}(f,sp,c)
+end
+
+Multiplication(f::Fun{OscRational{DD,RR}},sp::OscRational{DD,RR}) where {DD,RR} = ConcreteCachedMultiplication(cfstype(f),f,sp,sum(f.coefficients)) #everything complex for now
+
+
 function laurent_getindex(negative::AbstractVector{T},nonnegative::AbstractVector{T},k::Integer,j::Integer) where T
     # switch to double-infinite indices
-    k=iseven(k) ? -k÷2 : (k-1)÷2
-    j=iseven(j) ? -j÷2 : (j-1)÷2
+    k=iseven(k) ? -k÷2 : (k-1)÷2 +1
+    j=iseven(j) ? -j÷2 : (j-1)÷2 +1
 
     if 0<k-j≤length(negative)
         negative[k-j]
@@ -62,11 +164,34 @@ function laurent_getindex(negative::AbstractVector{T},nonnegative::AbstractVecto
     end
 end
 
+function rational_getindex(negative::AbstractVector{T},nonnegative::AbstractVector{T},k::Integer,j::Integer) where T
+    # switch to double-infinite indices
+    k=iseven(k) ? (k÷2) : (-(k-1)÷2 - 1)
+    j=iseven(j) ? (j÷2) : (-(j-1)÷2 - 1)
+
+    if 0<k-j≤length(negative)
+        negative[k-j]
+    elseif 0<j-k≤length(nonnegative)
+        nonnegative[j-k]
+    else
+        zero(T)
+    end
+end
+
+
 rangespace(T::ConcreteMultiplication{OscLaurent{DD,RR},OscLaurent{DD,RR}}) where {DD,RR} = OscLaurent(domainspace(T).domain,T.space.exp + space(T.f).exp)
 function getindex(T::ConcreteMultiplication{OscLaurent{DD,RR},OscLaurent{DD,RR}},k::Integer,j::Integer) where {DD,RR}
     isempty(T.f.coefficients) && return zero(eltype(T))
     laurent_getindex(T.f.coefficients[3:2:end],T.f.coefficients[[1;2:2:end]],k,j)
+end
 
+domainspace(M::ConcreteCachedMultiplication{D,S,T}) where {D,S,T} = M.space
+domain(T::ConcreteCachedMultiplication) = domain(T.f)
+rangespace(T::ConcreteCachedMultiplication{OscRational{DD,RR},OscRational{DD,RR}}) where {DD,RR} = OscRational(domainspace(T).domain,T.space.exp + space(T.f).exp)
+
+function getindex(T::ConcreteCachedMultiplication{OscRational{DD,RR},OscRational{DD,RR}},k::Integer,j::Integer) where {DD,RR}
+    isempty(T.f.coefficients) && return zero(eltype(T))
+    rational_getindex(T.f.coefficients[2:2:end],T.f.coefficients[1:2:end],k,j) - ( j == k ? T.data : 0.0) - (k <= length(T.f.coefficients) ? T.f.coefficients[k] : 0.0)
 end
 
 function bandwidths(T::ConcreteMultiplication{OscLaurent{DD,RR},OscLaurent{DD,RR}}) where {DD,RR}

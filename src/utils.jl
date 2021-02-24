@@ -45,6 +45,14 @@ function evaluate(f::AbstractVector,S::OscLaurent{D,R},z) where {D,R}
     (horner(f,1:2:length(f),zz) + horner(f,2:2:length(f),invz).*invz)*exp.(1im*z*S.exp)
 end
 
+function evaluate(g::AbstractVector,S::OscRational{D,R},z) where {D,R}
+    #z = tocanonical(domain(S),z)
+    zz = mappoint(domain(S),Circle(),z)
+    invz = 1/zz
+    f = coefs_to_OscLaurent(g) # inefficient way to do this
+    (horner(f,1:2:length(f),zz) + horner(f,2:2:length(f),invz).*invz)*exp.(1im*z*S.exp)
+end
+
 function mobiusdiff(v::AbstractVector{T}) where T<:Number #need to fix
     n = length(v)
     if n == 1
