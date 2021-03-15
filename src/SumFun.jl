@@ -27,7 +27,7 @@ function combine!(f::Vector{T}) where T <: Fun
     j = 0
     @inbounds while j < length(f)
         j += 1
-        if length(f[j].coefficients) <= 4 && sum(abs.(f[j].coefficients)) < 1e-15 && length(f) > 2
+        if (length(f[j].coefficients) <= 4 && sum(abs.(f[j].coefficients)) < 1e-15 && length(f) > 2) || maximum(abs.(f[j].coefficients)) < 1e-15
             deleteat!(f,j)
             j -= 1
         end
