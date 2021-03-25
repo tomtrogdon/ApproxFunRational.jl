@@ -1,4 +1,4 @@
-using ApproxFunRational, ApproxFunFourier, ApproxFunBase, ApproxFun
+using ApproxFun, ApproxFunRational
 using Test
 
 ## TODO: Test SumFuns

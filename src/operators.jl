@@ -245,7 +245,7 @@ macro fourier_operator(Op)
 
         @wrapper $OpWrap
 
-        $ConcOp(sp::Space,k) = $ConcOp{typeof(sp),typeof(k),prectype(sp)}(sp,k)
+        $ConcOp(sp::Space,k) = $ConcOp{typeof(sp),typeof(k),rangetype(sp)}(sp,k)
         $ConcOp(sp::Space) = $ConcOp(sp,1.0)
 
         $Op(sp::UnsetSpace,k) = $ConcOp(sp,k)
