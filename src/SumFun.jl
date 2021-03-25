@@ -11,7 +11,8 @@ SumFun(f::Fun{T}) where T<: PiecewiseSpace = SumFun(components(f))
 conj(s::SumFun) = SumFun(map(conj,s.funs))
 conj(s::Array{T}) where T<:SumFun = map(conj,s)
 
-sum(s::SumFun) = sum(map(sum,s.funs))
+#sum(s::SumFun) = sum(map(sum,s.funs))
+sum(s::SumFun) = s.funs == [] ? 0.0 : sum(map(sum,s.funs))
 sum(s::Array{T}) where T<:SumFun = map(sum,s)
 
 function combine!(s::SumFun)
