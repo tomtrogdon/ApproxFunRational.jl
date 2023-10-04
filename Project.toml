@@ -14,9 +14,9 @@ MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 
 [compat]
-ApproxFun = "0.11.8, 0.12"
+ApproxFun = "0.11.8, 0.12, 0.13"
 ApproxFunOrthogonalPolynomials = "0.2.5, 0.3, 0.4"
-ApproxFunBase = "0.2, 0.4"
+ApproxFunBase = "~0"
 ApproxFunFourier = "0.1, 0.2"
 FFTW = "0.3, 1"
 Reexport = "0.2, 1"
